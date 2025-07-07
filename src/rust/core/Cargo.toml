@@ -1,0 +1,23 @@
+[package]
+name = "flashcard-core"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+sqlx = { workspace = true }
+sha2 = { workspace = true }
+pyo3 = { workspace = true, optional = true }
+
+[features]
+default = []
+pyo3 = ["dep:pyo3"]
+
+[dev-dependencies]
+tokio = { workspace = true }
+tempfile = { workspace = true }
