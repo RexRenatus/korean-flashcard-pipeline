@@ -1,0 +1,43 @@
+{
+  "stage1_responses": [
+    {
+      "term": "안녕하세요",
+      "response": {
+        "term_number": 1,
+        "term": "안녕하세요",
+        "ipa": "[annjʌŋhasejo]",
+        "pos": "greeting",
+        "primary_meaning": "hello",
+        "other_meanings": "good day, greetings",
+        "metaphor": "like opening a door to conversation",
+        "metaphor_noun": "door",
+        "metaphor_action": "opening",
+        "suggested_location": "entrance",
+        "anchor_object": "door handle",
+        "anchor_sensory": "smooth metal",
+        "explanation": "formal greeting used when meeting someone",
+        "usage_context": "formal situations",
+        "comparison": {
+          "similar_to": [
+            "안녕"
+          ],
+          "different_from": [
+            "잘가"
+          ],
+          "commonly_confused_with": []
+        },
+        "homonyms": [],
+        "korean_keywords": [
+          "인사",
+          "만남"
+        ]
+      }
+    }
+  ],
+  "stage2_responses": [
+    {
+      "term": "안녕하세요",
+      "response": "1\t안녕하세요\t[annjʌŋhasejo]\tgreeting\tHello\tFormal greeting\t안녕하세요, 만나서 반갑습니다.\tannyeonghaseyo\tannyeonghaseyo, mannaseo bangapseumnida.\tHello, nice to meet you.\tOpening a door\tbeginner\tvery common\tformal,polite\tEssential greeting"
+    }
+  ]
+}

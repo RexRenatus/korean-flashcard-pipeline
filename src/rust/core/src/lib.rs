@@ -4,46 +4,25 @@
 //! the pipeline, including vocabulary items, processing results, and
 //! common traits.
 
-pub mod types;
-pub mod errors;
-pub mod traits;
 pub mod models;
 pub mod database;
 pub mod cache_manager;
+pub mod traits;
+pub mod logging;
 
 #[cfg(feature = "pyo3")]
 pub mod python_interop;
 
+// Re-export core types
+pub use models::*;
 pub use cache_manager::CacheManager;
+pub use traits::*;
 
-pub use errors::{CoreError, Result};
-pub use types::{
-    VocabularyItem,
-    Stage1Result,
-    Stage2Result,
-    Comparison,
-    Homonym,
-    ProcessingStatus,
-    QueueState,
-};
-pub use traits::{
-    Cacheable,
-    Processable,
-    Validatable,
-};
+// Re-export database types
+pub use database::{DatabasePool, create_pool};
+
+// Re-export logging utilities
+pub use logging::{init_logging, init_json_logging, LogContext};
 
 /// Re-export commonly used external types
 pub use chrono::{DateTime, Utc};
-pub use uuid::Uuid;
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_module_exports() {
-        // Ensure all public APIs are accessible
-        let _ = VocabularyItem::default();
-        let _ = CoreError::ValidationError("test".to_string());
-    }
-}

@@ -1,17 +1,8 @@
-[package]
-name = "korean-flashcard-pipeline"
-version = "0.1.0"
-edition = "2021"
-authors = ["Korean Language Learning Team"]
-description = "AI-powered flashcard generation pipeline for Korean language learning"
-license = "MIT"
-repository = "https://github.com/yourusername/korean-flashcard-pipeline"
-
 [workspace]
+resolver = "2"
 members = [
     "src/rust/core",
-    "src/rust/pipeline",
-    "src/rust/cache"
+    "src/rust/pipeline"
 ]
 
 [workspace.dependencies]

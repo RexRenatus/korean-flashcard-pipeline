@@ -1,0 +1,26 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Task|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/mnt/c/Users/JackTheRipper/Desktop/\\(00\\)\\ ClaudeCode/ANTHROPIC_FLASHCARDS/pre_task_review.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Task|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/mnt/c/Users/JackTheRipper/Desktop/\\(00\\)\\ ClaudeCode/ANTHROPIC_FLASHCARDS/post_task_review.sh"
+          }
+        ]
+      }
+    ]
+  }
+}

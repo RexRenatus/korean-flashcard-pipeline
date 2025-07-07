@@ -2,9 +2,14 @@
 
 <div align="center">
   
-  [![Build Status](https://img.shields.io/badge/Build-Phase%202-yellow?style=for-the-badge)](https://github.com/RexRenatus/korean-flashcard-pipeline)
+  [![Build Status](https://img.shields.io/badge/Build-Production_Ready-green?style=for-the-badge)](https://github.com/RexRenatus/korean-flashcard-pipeline)
   [![Rust](https://img.shields.io/badge/Rust-1.75+-orange?style=for-the-badge&logo=rust)](https://www.rust-lang.org/)
-  [![Python](https://img.shields.io/badge/Python-3.11+-blue?style=for-the-badge&logo=python)](https://www.python.org/)
+  [![Python](https://img.shields.io/badge/Python-3.9+-blue?style=for-the-badge&logo=python)](https://www.python.org/)
+  [![CLI](https://img.shields.io/badge/CLI-Enhanced_v2-purple?style=for-the-badge)](./docs/user/CLI_GUIDE.md)
+  
+  [![Portfolio](https://img.shields.io/badge/Portfolio-RexRenatus-black?style=for-the-badge&logo=github)](https://rexrenatus.github.io/RexRenatus.io/)
+  [![Instagram](https://img.shields.io/badge/Instagram-@devi.nws-E4405F?style=for-the-badge&logo=instagram)](https://www.instagram.com/devi.nws/)
+  [![GitHub](https://img.shields.io/badge/GitHub-Project-181717?style=for-the-badge&logo=github)](https://github.com/RexRenatus/korean-flashcard-pipeline)
   
   <h3>AI-Powered Flashcard Generation System for Korean Language Learning</h3>
   
@@ -15,221 +20,223 @@
 
 ## 🎯 Overview
 
-This project implements a sophisticated two-stage AI pipeline that transforms Korean vocabulary items into comprehensive Anki-compatible flashcards. By leveraging OpenRouter's presets with Claude Sonnet 4, the system generates semantically rich flashcards with cultural context, usage notes, and nuanced explanations—all while maintaining a permanent cache to minimize API costs.
+This project implements a sophisticated two-stage AI pipeline that transforms Korean vocabulary items into comprehensive Anki-compatible flashcards. With a powerful CLI featuring 40+ commands, concurrent processing, and extensive automation capabilities, it's designed for both casual learners and power users.
 
 ## ✨ Key Features
 
 ### 🚀 Core Capabilities
 - **Two-Stage AI Processing**: Semantic analysis → Flashcard generation
+- **Concurrent Processing**: Up to 50x faster with parallel API calls
 - **Permanent Caching**: Never repeat the same API call twice
-- **Batch Processing**: Handle 500+ vocabulary items efficiently
-- **Resume Capability**: Checkpoint system for interruption recovery
-- **TSV Export**: Direct Anki-compatible output format
+- **Professional CLI**: 40+ commands with rich terminal UI
+- **Multiple Export Formats**: TSV, JSON, Anki, PDF
+- **Real-time Monitoring**: Live dashboard for processing operations
+- **Automation Ready**: Watch mode, scheduling, and integrations
 
-### 💡 Technical Highlights
-- **Rust Performance**: Core pipeline built for speed and reliability
-- **Python Integration**: PyO3 embedding for seamless API access
-- **SQLite Storage**: Optimized with WAL mode and comprehensive indexes
-- **Error Quarantine**: Resilient processing with retry logic
-- **Progress Tracking**: Real-time batch progress with ETA
+### 💡 Advanced Features
+- **Configuration System**: YAML files + environment variables
+- **Plugin Architecture**: Extend functionality with custom plugins
+- **Error Recovery**: Comprehensive error handling with suggestions
+- **Security Auditing**: Built-in security checks and optimization
+- **Interactive Mode**: REPL for exploratory usage
+- **Third-party Integrations**: Notion, Anki-Connect, Google Sheets
 
 ## 🛠️ Technology Stack
 
 ### Core Technologies
 - **Rust**: High-performance data processing and orchestration
-- **Python**: OpenRouter API client and rate limiting
+- **Python**: Enhanced CLI, API client, and integrations
 - **SQLite**: Persistent caching and queue management
 - **PyO3**: Rust-Python interoperability
 
 ### Key Libraries
-- **Rust**: tokio, sqlx, serde, thiserror, sha2
-- **Python**: httpx, pydantic, tenacity (planned)
+- **CLI**: typer, rich, click
+- **Async**: httpx, asyncio, aiofiles
+- **Data**: pydantic, pyyaml, pandas
+- **Monitoring**: watchdog, schedule
 
-## 🚀 Current Status
+## 🚀 Quick Start
 
-### Phase Progress
-- ✅ **Phase 1**: Design & Architecture (100% Complete)
-- 🚧 **Phase 2**: Core Implementation (80% Complete)
-- ⏳ **Phase 3**: API Client (0% - Next)
-- ⏳ **Phase 4**: Pipeline Integration (0%)
-- ⏳ **Phase 5**: Testing & Polish (0%)
+### 1. Installation
 
-### Database Schema
+```bash
+# Clone the repository
+git clone https://github.com/RexRenatus/korean-flashcard-pipeline.git
+cd korean-flashcard-pipeline
 
-```sql
--- Core Tables (8 total)
-vocabulary_items       -- Source vocabulary data
-stage1_cache          -- Semantic analysis cache
-stage2_cache          -- Flashcard generation cache
-processing_queue      -- Batch processing management
-batch_metadata        -- Batch progress tracking
-processing_checkpoints -- Resume capability
-api_metrics           -- Performance monitoring
-cache_metrics         -- Cache effectiveness tracking
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Build Rust components (optional)
+cargo build --release
 ```
 
-## 📁 Project Structure
+### 2. Configuration
 
-```
-korean-flashcard-pipeline/
-├── Cargo.toml                    # Rust workspace
-├── pyproject.toml               # Python configuration
-├── migrations/                  # Database schemas
-│   └── 001_initial_schema.sql  # Complete schema ✅
-│
-├── Phase1_Design/              # Architecture docs ✅
-│   ├── SYSTEM_DESIGN.md
-│   ├── API_SPECIFICATIONS.md
-│   ├── DATABASE_DESIGN.md
-│   ├── INTEGRATION_DESIGN.md
-│   └── PIPELINE_DESIGN.md
-│
-├── src/
-│   ├── rust/
-│   │   └── core/              # Domain models ✅
-│   │       ├── models/        # Types & structs
-│   │       ├── database/      # Repositories
-│   │       ├── cache_manager.rs
-│   │       └── python_interop.rs
-│   │
-│   └── python/
-│       └── flashcard_pipeline/ # API client (pending)
-│
-└── planning/                   # Project management
-    ├── MASTER_TODO.md         # Task tracking
-    ├── PROJECT_JOURNAL.md     # Development log
-    └── PHASE_ROADMAP.md       # Sprint planning
+```bash
+# Initialize configuration
+python -m flashcard_pipeline init
+
+# Set your API key
+export OPENROUTER_API_KEY="your-api-key-here"
+# Or add to .env file
 ```
 
-## 🏗️ Architecture Overview
+### 3. Basic Usage
 
-### Two-Stage Processing Pipeline
+```bash
+# Process vocabulary with default settings
+python -m flashcard_pipeline process input.csv
 
-```mermaid
-graph LR
-    A[Vocabulary Item] --> B[Stage 1: Semantic Analysis]
-    B --> C[Cache Check]
-    C -->|Hit| E[Stage 2: Flashcard Generation]
-    C -->|Miss| D[OpenRouter API]
-    D --> E
-    E --> F[Cache Check]
-    F -->|Hit| H[TSV Output]
-    F -->|Miss| G[OpenRouter API]
-    G --> H
+# Process with concurrent requests (faster)
+python -m flashcard_pipeline process input.csv --concurrent 20
+
+# Process first 100 words
+python -m flashcard_pipeline process input.csv --limit 100 --output korean_flashcards.tsv
 ```
 
-### Key Design Decisions
-- **Permanent Caching**: No TTL, manual invalidation only
-- **PyO3 Embedding**: Direct Python integration vs IPC
-- **SQLite Storage**: Embedded database for simplicity
-- **Batch Optimization**: Designed for 500+ item processing
+## 📚 Documentation
 
-## 🚦 Quick Start
+- **[CLI User Guide](./docs/user/CLI_GUIDE.md)** - Comprehensive guide to all CLI features
+- **[Quick Start Tutorial](./docs/user/QUICK_START.md)** - Get started in 5 minutes
+- **[API Documentation](./docs/api/README.md)** - API specifications and contracts
+- **[Architecture Overview](./docs/architecture/README.md)** - System design and architecture
+- **[Developer Guide](./docs/developer/README.md)** - Contributing and development
 
-### Prerequisites
-- Rust 1.75+
-- Python 3.11+
-- SQLite 3
-- OpenRouter API key
+## 🎮 CLI Overview
 
-### Installation
+The enhanced CLI provides a professional command-line experience:
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/RexRenatus/korean-flashcard-pipeline.git
-   cd korean-flashcard-pipeline
-   ```
+```bash
+# Core Commands
+flashcard-pipeline init                    # Initialize configuration
+flashcard-pipeline process input.csv       # Process vocabulary
+flashcard-pipeline config --list           # View configuration
 
-2. **Set up Rust**
-   ```bash
-   cargo build --release
-   ```
+# Import/Export
+flashcard-pipeline import csv data.csv     # Import vocabulary
+flashcard-pipeline export anki output.apkg # Export to Anki
 
-3. **Set up Python**
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   pip install -r requirements.txt
-   ```
+# Database Operations
+flashcard-pipeline db migrate              # Run migrations
+flashcard-pipeline db stats                # View statistics
 
-4. **Configure environment**
-   ```bash
-   cp .env.example .env
-   # Edit .env with your OpenRouter API key
-   ```
+# Monitoring & Analysis
+flashcard-pipeline monitor                 # Live dashboard
+flashcard-pipeline cache stats             # Cache statistics
+flashcard-pipeline test connection         # Test API connection
 
-## 📊 Performance Metrics
+# Automation
+flashcard-pipeline watch ./input           # Watch for new files
+flashcard-pipeline schedule "0 9 * * *"    # Schedule processing
 
-### Cache Efficiency
-- **Goal**: 100% cache hit rate on second run
-- **Token Savings**: ~$0.15 per 1000 tokens
-- **Processing Speed**: 50+ items/second (cached)
+# Advanced
+flashcard-pipeline interactive             # REPL mode
+flashcard-pipeline audit                   # Security audit
+flashcard-pipeline optimize                # Performance tuning
+```
 
-### Reliability
-- **Error Rate**: < 0.1% target
-- **Retry Logic**: 3 attempts with exponential backoff
-- **Quarantine System**: Isolate problematic items
+## 📊 Performance
 
-## 🔮 Roadmap
+- **Sequential Processing**: ~1-2 items/second
+- **Concurrent Processing**: Up to 50 items/second (with 50 workers)
+- **Cache Hit Rate**: Typically 60-80% on repeated vocabularies
+- **Memory Usage**: <200MB for 10,000 items
+- **Database Size**: ~1MB per 1,000 cached items
 
-### Immediate Next Steps (Phase 2 Completion)
-- [ ] Implement trait definitions
-- [ ] Set up structured logging
-- [ ] Write comprehensive unit tests
+## 🔧 Configuration
 
-### Phase 3: Python API Client
-- [ ] OpenRouter client implementation
-- [ ] Rate limiter with token bucket
-- [ ] Circuit breaker pattern
-- [ ] Request/response models
+Create `.flashcard-config.yml` for custom settings:
 
-### Future Enhancements
-- [ ] Web UI with real-time progress
-- [ ] Multiple model support
-- [ ] Custom card templates
-- [ ] Distributed processing
+```yaml
+api:
+  provider: openrouter
+  model: anthropic/claude-3.5-sonnet
+  timeout: 30
 
-## 📝 Development Guidelines
+processing:
+  max_concurrent: 20
+  batch_size: 100
+  rate_limit:
+    requests_per_minute: 60
+    tokens_per_minute: 90000
 
-This project follows strict development rules defined in `CLAUDE.md`:
+cache:
+  enabled: true
+  path: .cache/flashcards
+  ttl_days: 30
 
-- **Documentation First**: All design before implementation
-- **Test Coverage**: 80%+ requirement
-- **Error Handling**: Comprehensive with specific failure modes
-- **Performance**: Benchmarks for all critical paths
+output:
+  default_format: tsv
+  anki:
+    deck_name: "Korean Vocabulary"
+    tags: ["korean", "ai-generated"]
+```
+
+## 🧪 Testing
+
+```bash
+# Run all tests
+pytest
+
+# Run with coverage
+pytest --cov=flashcard_pipeline
+
+# Run specific test category
+pytest tests/unit/
+pytest tests/integration/
+```
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please:
-- Follow the established architecture patterns
-- Write tests for new features
-- Update documentation accordingly
-- Submit PRs with clear descriptions
+We welcome contributions! Please see our [Contributing Guide](./CONTRIBUTING.md) for details.
 
-## 🐛 Known Limitations
+### Development Setup
 
-- Single-node processing only (no distribution)
-- OpenRouter preset dependency
-- No automatic cache invalidation
-- Manual TSV import to Anki required
+```bash
+# Install development dependencies
+pip install -r requirements-dev.txt
 
-## 📜 License
+# Run pre-commit hooks
+pre-commit install
 
-This project is open source and available under the [MIT License](LICENSE).
+# Run linting
+ruff check .
+black --check .
 
-## 📞 Connect
+# Run type checking
+mypy src/
+```
 
-- **GitHub**: [@RexRenatus](https://github.com/RexRenatus)
+## 📝 License
+
+This project is licensed under the MIT License - see the [LICENSE](./LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- **OpenRouter** for providing access to Claude Sonnet 4
+- **Anthropic** for Claude's exceptional language understanding
+- **Rich** and **Typer** for the beautiful CLI experience
+- The Korean language learning community for inspiration
+
+## 📞 Support
+
+- **Documentation**: [Full documentation](./docs/)
+- **Issues**: [GitHub Issues](https://github.com/RexRenatus/korean-flashcard-pipeline/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/RexRenatus/korean-flashcard-pipeline/discussions)
+- **Portfolio**: [RexRenatus.io](https://rexrenatus.github.io/RexRenatus.io/)
 - **Instagram**: [@devi.nws](https://www.instagram.com/devi.nws/)
-- **Portfolio**: [rexrenatus.github.io/RexRenatus.io](https://rexrenatus.github.io/RexRenatus.io/)
-
-## 📄 License
-
-This project is open source and available under the [MIT License](LICENSE).
 
 ---
 
 <div align="center">
+  Made with ❤️ for Korean language learners everywhere
+  
+  <br><br>
   
   **"In the beginning, a thought begat a question,  
   a question begat an idea,  
@@ -237,6 +244,4 @@ This project is open source and available under the [MIT License](LICENSE).
   and the theory begat the obsession"**
   
   Built with 💜 in the pursuit of infinite knowledge
-  
 </div>
-

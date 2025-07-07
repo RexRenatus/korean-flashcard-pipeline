@@ -72,6 +72,13 @@ Thumbs.db
 
 # Project specific
 pipeline.db
+test_pipeline.db
 backups/
 temp/
 cache/
+.cache/
+*.tsv
+!test_5_words.csv
+!docs/10K_HSK_List.csv
+.env.test
+test_output.tsv

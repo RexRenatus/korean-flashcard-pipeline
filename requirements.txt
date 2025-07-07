@@ -2,7 +2,7 @@
 httpx[http2]>=0.25.0
 pydantic>=2.5.0
 python-dotenv>=1.0.0
-click>=8.1.0
+typer[all]>=0.9.0
 rich>=13.7.0
 
 # Async support
@@ -26,3 +26,9 @@ pre-commit>=3.6.0
 
 # API documentation
 pydantic-openapi-schema>=1.3.0
+
+# CLI v2 dependencies
+pyyaml>=6.0.1
+watchdog>=3.0.0
+schedule>=1.2.0
+click>=8.1.7  # For typer
