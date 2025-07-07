@@ -1,6 +1,6 @@
 # Master Todo List
 
-**Last Updated**: 2025-01-07
+**Last Updated**: 2025-01-08
 
 ## Purpose
 
@@ -98,11 +98,56 @@ Central task tracking for the Korean Language Flashcard Pipeline project. This f
 - [x] Expand integration test coverage (2025-01-07)
 
 ### In Progress 🚧
-- [ ] Fix test failures after model updates (2025-01-07)
-  - [x] Fixed test_models.py to match current Pydantic v2 model definitions
-  - [x] Fixed import errors in test_circuit_breaker.py
-  - [x] Fixed import errors in test_rate_limiter.py
-  - [ ] Fix remaining test failures in api_client, cache_service, circuit_breaker, and rate_limiter tests
+- [ ] Phase 2 Component Testing Fixes (Target: 80%+ pass rate)
+  
+  #### Sub-Phase 1: Cache Service Completion (82% → 95%+) 
+  - [ ] Fix concurrent_writes test - Add proper async locking
+  - [ ] Fix concurrent_read_write test - Resolve race condition
+  - [ ] Fix corrupted_cache_file test - Add error handling
+  - [ ] Fix size_calculation test - Update stats tracking
+  
+  #### Sub-Phase 2: API Client Fixes (42% → 80%+)
+  - [ ] Fix markdown parsing - Extract JSON from markdown blocks
+  - [ ] Fix null comparison handling - Make comparison required
+  - [ ] Add headers to all error mock responses
+  - [ ] Fix authentication error to use AuthenticationError
+  - [ ] Update retry logic test expectations
+  - [ ] Fix statistics tracking tests
+  - [ ] Fix validation error test format
+  
+  #### Sub-Phase 3: Rate Limiter Implementation (14% → 70%+)
+  - [ ] Create missing rate_limiter fixture
+  - [ ] Create distributed_limiter fixture
+  - [ ] Implement core token bucket algorithm
+  - [ ] Add token refill rate calculation
+  - [ ] Implement async acquire/release
+  - [ ] Add thread-safe operations
+  - [ ] Implement adaptive throttling
+  - [ ] Fix timeout handling
+  
+  #### Sub-Phase 4: Circuit Breaker Features (37% → 70%+)
+  - [ ] Implement multi-service support
+  - [ ] Add service isolation
+  - [ ] Create reset_all_breakers functionality
+  - [ ] Implement adaptive thresholds
+  - [ ] Add error burst detection
+  - [ ] Create pattern recognition
+  - [ ] Implement dynamic threshold adjustment
+
+### Recent Updates (2025-01-08) 🚧
+- [x] Fixed Phase 1 test failures - achieved 100% pass rate (67/67 tests)
+  - [x] Fixed Pydantic v2 migration issues (field_validator, model_dump)
+  - [x] Added field validation constraints (gt=0, min_length=1)
+  - [x] Implemented TSV special character escaping
+  - [x] Fixed configuration hierarchy (env vars override)
+  - [x] Resolved YAML Path serialization issues
+- [x] Started Phase 2 Component Testing fixes (37/85 tests passing - 44%)
+  - [x] Fixed API client initialization tests (4/4)
+  - [x] Fixed cache service basic operations (18/22)
+  - [x] Created helper function for API responses
+  - [x] Updated fixtures to non-async
+- [x] Created PHASE2_TEST_FIX_PLAN.md with detailed sub-phase breakdown
+- [x] Updated PROJECT_JOURNAL.md with two new session summaries
 
 ### Recent Updates (2025-01-07) ✅
 - [x] Created database migration 003_flashcards_tables.sql to add missing tables
@@ -154,6 +199,48 @@ Central task tracking for the Korean Language Flashcard Pipeline project. This f
 - [x] Complete documentation and achieve >90% test coverage
 
 **Implementation Note**: All 5 phases have been implemented in a comprehensive cli_v2.py file that includes all features specified in the CLI_ARCHITECTURE.md and CLI_IMPLEMENTATION_PLAN.md documents.
+
+## Comprehensive Testing Project 🚧 IN PROGRESS (2025-07-07)
+
+### Phase 1: Foundation Testing ✅ COMPLETE
+- [x] Create test_models_validation.py - VocabularyItem, Stage1/2Response validation
+- [x] Create test_configuration.py - Config loading, environment variables, validation
+- [x] Create test_error_handling.py - Error codes, recovery, user-friendly messages
+- [x] Create conftest.py with shared fixtures
+- [x] Create run_phase1_tests.py test runner
+- [x] Install pytest and dependencies (pytest-asyncio, pytest-cov)
+- [ ] Fix import errors in Phase 1 tests (missing enums, functions)
+
+### Phase 2: Component Testing ✅ COMPLETE
+- [x] Create test_cache_service.py - Cache operations, invalidation, statistics
+- [x] Create test_rate_limiter.py - Token bucket, distributed limiting, fairness
+- [x] Create test_circuit_breaker.py - State transitions, failure handling, adaptation
+- [x] Create test_api_client_mock.py - Request/response handling without real API
+- [x] Create run_phase2_tests.py test runner
+- [x] Update tests/README.md with Phase 2 documentation
+
+### Phase 3: Integration Testing 🔄 PENDING
+- [ ] Create test_mock_pipeline_integration.py
+- [ ] Create test_database_integration.py
+- [ ] Create test_cli_integration.py
+
+### Phase 4: Performance Testing 🔄 PENDING
+- [ ] Create test_performance_load.py
+- [ ] Create test_performance_stress.py
+- [ ] Create test_performance_optimization.py
+
+### Phase 5: End-to-End Testing 🔄 PENDING
+- [ ] Create test_e2e_real_data.py
+- [ ] Create test_e2e_system.py
+- [ ] Create test_e2e_user_acceptance.py
+
+### Testing Issues Found (2025-07-07)
+- [x] Missing aiofiles dependency - FIXED
+- [ ] Import errors: DifficultyLevel, FormalityLevel enums don't exist
+- [ ] Import errors: config_error function doesn't exist in cli.errors
+- [ ] Import errors: DEFAULT_CONFIG doesn't exist in cli.config
+- [ ] Pydantic v1 style validators deprecated (need to migrate to v2)
+- [ ] Unknown pytest config option: env_files
 
 ## Technical Debt & Improvements 📝
 

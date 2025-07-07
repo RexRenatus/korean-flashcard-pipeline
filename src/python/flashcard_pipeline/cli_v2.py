@@ -28,9 +28,21 @@ from rich import print as rprint
 from rich.prompt import Confirm, Prompt
 from dotenv import load_dotenv
 import httpx
-from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler
-import schedule
+try:
+    from watchdog.observers import Observer
+    from watchdog.events import FileSystemEventHandler
+    WATCHDOG_AVAILABLE = True
+except ImportError:
+    WATCHDOG_AVAILABLE = False
+    Observer = None
+    FileSystemEventHandler = None
+
+try:
+    import schedule
+    SCHEDULE_AVAILABLE = True
+except ImportError:
+    SCHEDULE_AVAILABLE = False
+    schedule = None
 
 from .api_client import OpenRouterClient
 from .cache import CacheService
@@ -61,18 +73,21 @@ error_handler = ErrorHandler(console)
 PLUGINS: Dict[str, Any] = {}
 
 
-class FileWatcher(FileSystemEventHandler):
-    """Watch for file changes and trigger processing"""
-    
-    def __init__(self, callback, patterns=None):
-        self.callback = callback
-        self.patterns = patterns or ["*.csv"]
+if WATCHDOG_AVAILABLE:
+    class FileWatcher(FileSystemEventHandler):
+        """Watch for file changes and trigger processing"""
         
-    def on_created(self, event):
-        if not event.is_directory:
-            for pattern in self.patterns:
-                if event.src_path.endswith(pattern.replace("*", "")):
-                    self.callback(event.src_path)
+        def __init__(self, callback, patterns=None):
+            self.callback = callback
+            self.patterns = patterns or ["*.csv"]
+            
+        def on_created(self, event):
+            if not event.is_directory:
+                for pattern in self.patterns:
+                    if event.src_path.endswith(pattern.replace("*", "")):
+                        self.callback(event.src_path)
+else:
+    FileWatcher = None
 
 
 def version_callback(value: bool):
@@ -277,9 +292,9 @@ async def _process_batch(cli_ctx, input_file, output_file, output_format,
                     continue
             
             items.append(VocabularyItem(
-                position=int(row.get('position', i + 1)),
-                term=row['term'],
-                type=row.get('type', 'unknown')
+                position=int(row.get('Position', row.get('position', i + 1))),
+                term=row.get('Hangul', row.get('term', '')),
+                type=row.get('Word_Type', row.get('type', 'unknown'))
             ))
     
     if not items:
@@ -309,17 +324,13 @@ async def _process_batch(cli_ctx, input_file, output_file, output_format,
                 cache_service=cache
             ) as orchestrator:
                 
-                async def update_progress(result):
+                # Process batch - orchestrator handles progress internally
+                batch_results = await orchestrator.process_batch(items)
+                
+                # Update progress bar based on results
+                for result in batch_results:
                     progress.advance(task)
                     results.append(result)
-                
-                orchestrator.set_progress_callback(update_progress)
-                
-                # Process all items
-                await orchestrator.process_vocabulary_batch(
-                    items=items,
-                    batch_id=batch_id
-                )
         else:
             # Sequential processing
             for item in items:
@@ -330,9 +341,27 @@ async def _process_batch(cli_ctx, input_file, output_file, output_format,
     # Write output
     if output_format == "json":
         with open(output_file, 'w', encoding='utf-8') as f:
-            json.dump([r.dict() for r in results], f, indent=2, ensure_ascii=False)
+            # Convert ProcessingResult objects to dicts
+            json_results = []
+            for r in results:
+                json_results.append({
+                    "position": r.position,
+                    "term": r.term,
+                    "flashcard_data": r.flashcard_data,
+                    "from_cache": r.from_cache,
+                    "error": r.error,
+                    "processing_time_ms": r.processing_time_ms
+                })
+            json.dump(json_results, f, indent=2, ensure_ascii=False)
     else:
-        # TSV format
+        # TSV format - write the actual flashcard data
+        with open(output_file, 'w', encoding='utf-8') as f:
+            for r in results:
+                if r.flashcard_data and not r.error:
+                    f.write(r.flashcard_data)
+                    if not r.flashcard_data.endswith('\n'):
+                        f.write('\n')
+        
         console.print(f"[green]✓[/green] Wrote {len(results)} flashcards to {output_file}")
     
     # Write to database if enabled
@@ -598,6 +627,11 @@ def watch(
     recursive: bool = typer.Option(False, "--recursive", "-r", help="Watch recursively"),
 ):
     """Watch directory for changes and process automatically"""
+    if not WATCHDOG_AVAILABLE:
+        console.print("[red]Error: watchdog package not installed[/red]")
+        console.print("Install with: pip install watchdog")
+        raise typer.Exit(1)
+    
     cli_ctx: CLIContext = ctx.obj
     
     def process_file(filepath):

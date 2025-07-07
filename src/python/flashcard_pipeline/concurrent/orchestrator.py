@@ -43,8 +43,7 @@ class ConcurrentPipelineOrchestrator:
         )
         self.circuit_breaker = CircuitBreaker(
             failure_threshold=10,
-            recovery_timeout=60,
-            half_open_max_calls=5
+            recovery_timeout=60
         )
         self.results_collector = OrderedResultsCollector()
         self.progress_tracker = ConcurrentProgressTracker(0)
@@ -186,7 +185,6 @@ class ConcurrentPipelineOrchestrator:
             
             # Process through circuit breaker
             result = await self.circuit_breaker.call(
-                f"process_item_{item.position}",
                 lambda: self._api_process_item(item)
             )
             

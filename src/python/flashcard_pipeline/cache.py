@@ -66,7 +66,7 @@ class CacheService:
             if not stage1_result:
                 raise ValueError("stage1_result required for Stage 2 cache key")
             
-            stage1_dict = stage1_result.dict()
+            stage1_dict = stage1_result.model_dump()
             # Sort keys for consistent hashing
             stage1_json = json.dumps(stage1_dict, sort_keys=True, ensure_ascii=False)
             content = f"{vocabulary_item.term}:{stage1_json}"
@@ -153,10 +153,10 @@ class CacheService:
         async with lock:
             try:
                 data = {
-                    'vocabulary_item': vocabulary_item.dict(),
-                    'response': response.dict(),
+                    'vocabulary_item': vocabulary_item.model_dump(),
+                    'response': response.model_dump(),
                     'tokens': tokens_used,
-                    'cached_at': datetime.utcnow().isoformat()
+                    'cached_at': datetime.now().isoformat()
                 }
                 
                 async with aiofiles.open(cache_path, 'w', encoding='utf-8') as f:
@@ -228,11 +228,11 @@ class CacheService:
         async with lock:
             try:
                 data = {
-                    'vocabulary_item': vocabulary_item.dict(),
-                    'stage1_result': stage1_result.dict(),
-                    'response': response.dict(),
+                    'vocabulary_item': vocabulary_item.model_dump(),
+                    'stage1_result': stage1_result.model_dump(),
+                    'response': response.model_dump(),
                     'tokens': tokens_used,
-                    'cached_at': datetime.utcnow().isoformat()
+                    'cached_at': datetime.now().isoformat()
                 }
                 
                 async with aiofiles.open(cache_path, 'w', encoding='utf-8') as f:

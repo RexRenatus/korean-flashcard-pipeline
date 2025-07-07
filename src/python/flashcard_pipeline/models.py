@@ -3,7 +3,7 @@
 from typing import Dict, List, Optional, Any
 from datetime import datetime, timedelta
 from enum import Enum
-from pydantic import BaseModel, Field, validator, field_validator
+from pydantic import BaseModel, Field, field_validator
 import json
 
 
@@ -21,13 +21,14 @@ class PartOfSpeech(str, Enum):
 
 class VocabularyItem(BaseModel):
     """Input vocabulary item from CSV"""
-    position: int
-    term: str
-    type: Optional[str] = None
+    position: int = Field(gt=0)
+    term: str = Field(min_length=1)
+    type: str = Field(default="unknown")
     
-    @validator('type')
+    @field_validator('type', mode='before')
+    @classmethod
     def validate_type(cls, v):
-        if v is None:
+        if v is None or v == "":
             return PartOfSpeech.UNKNOWN.value
         # Map common variations
         type_mapping = {
@@ -76,11 +77,13 @@ class Stage1Response(BaseModel):
     homonyms: Optional[List[Homonym]] = Field(default_factory=list)
     korean_keywords: List[str]
     
-    @validator('homonyms', pre=True)
+    @field_validator('homonyms', mode='before')
+    @classmethod
     def validate_homonyms(cls, v):
         return v if v is not None else []
     
-    @validator('pos')
+    @field_validator('pos')
+    @classmethod
     def validate_pos(cls, v):
         # Ensure POS is valid
         valid_pos = [e.value for e in PartOfSpeech]
@@ -131,9 +134,9 @@ class Stage2Request(BaseModel):
 
 class FlashcardRow(BaseModel):
     """Single row in TSV output"""
-    position: int
-    term: str  # With IPA
-    term_number: int
+    position: int = Field(gt=0)
+    term: str = Field(min_length=1)  # With IPA
+    term_number: int = Field(gt=0)
     tab_name: str
     primer: str
     front: str
@@ -145,14 +148,14 @@ class FlashcardRow(BaseModel):
         """Convert to TSV format"""
         fields = [
             str(self.position),
-            self.term,
+            self.term.replace('\t', '\\t').replace('\n', '\\n'),
             str(self.term_number),
-            self.tab_name,
-            self.primer,
-            self.front,
-            self.back,
-            self.tags,
-            self.honorific_level
+            self.tab_name.replace('\t', '\\t').replace('\n', '\\n'),
+            self.primer.replace('\t', '\\t').replace('\n', '\\n'),
+            self.front.replace('\t', '\\t').replace('\n', '\\n'),
+            self.back.replace('\t', '\\t').replace('\n', '\\n'),
+            self.tags.replace('\t', '\\t').replace('\n', '\\n'),
+            self.honorific_level.replace('\t', '\\t').replace('\n', '\\n')
         ]
         return "\t".join(fields)
 
@@ -167,7 +170,7 @@ class Stage2Response(BaseModel):
         lines = content.strip().split('\n')
         
         # Skip header if present
-        if lines[0].startswith('position\tterm'):
+        if lines and lines[0].startswith('position'):
             lines = lines[1:]
         
         rows = []
@@ -177,18 +180,21 @@ class Stage2Response(BaseModel):
                 
             parts = line.split('\t')
             if len(parts) >= 8:
-                row = FlashcardRow(
-                    position=int(parts[0]),
-                    term=parts[1],
-                    term_number=int(parts[2]),
-                    tab_name=parts[3],
-                    primer=parts[4],
-                    front=parts[5],
-                    back=parts[6],
-                    tags=parts[7],
-                    honorific_level=parts[8] if len(parts) > 8 else ""
-                )
-                rows.append(row)
+                try:
+                    row = FlashcardRow(
+                        position=int(parts[0]),
+                        term=parts[1],
+                        term_number=int(parts[2]),
+                        tab_name=parts[3],
+                        primer=parts[4],
+                        front=parts[5],
+                        back=parts[6],
+                        tags=parts[7],
+                        honorific_level=parts[8] if len(parts) > 8 else ""
+                    )
+                    rows.append(row)
+                except ValueError as e:
+                    raise ValueError(f"Error parsing TSV line: {e}\nLine: {line}\nParts: {parts}")
         
         return cls(rows=rows)
     

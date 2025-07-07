@@ -4,7 +4,7 @@ import os
 import yaml
 from pathlib import Path
 from typing import Dict, Any, Optional, List
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, ConfigDict
 import logging
 
 logger = logging.getLogger(__name__)
@@ -12,6 +12,8 @@ logger = logging.getLogger(__name__)
 
 class ApiConfig(BaseModel):
     """API configuration settings"""
+    model_config = ConfigDict(validate_assignment=True)
+    
     provider: str = Field(default="openrouter", description="API provider")
     model: str = Field(default="anthropic/claude-3.5-sonnet", description="Model to use")
     base_url: str = Field(default="https://openrouter.ai/api/v1", description="API base URL")
@@ -21,6 +23,8 @@ class ApiConfig(BaseModel):
 
 class ProcessingConfig(BaseModel):
     """Processing configuration settings"""
+    model_config = ConfigDict(validate_assignment=True)
+    
     max_concurrent: int = Field(default=20, ge=1, le=50, description="Maximum concurrent requests")
     batch_size: int = Field(default=100, description="Default batch size")
     rate_limit: Dict[str, int] = Field(
@@ -73,6 +77,8 @@ class LoggingConfig(BaseModel):
 
 class Config(BaseModel):
     """Main configuration class"""
+    model_config = ConfigDict(validate_assignment=True)
+    
     api: ApiConfig = Field(default_factory=ApiConfig)
     processing: ProcessingConfig = Field(default_factory=ProcessingConfig)
     cache: CacheConfig = Field(default_factory=CacheConfig)
@@ -133,7 +139,7 @@ class Config(BaseModel):
     
     def merge_with_args(self, **kwargs) -> "Config":
         """Merge configuration with command-line arguments"""
-        config_dict = self.dict()
+        config_dict = self.model_dump()
         
         # Map CLI args to config paths
         arg_mappings = {
@@ -162,9 +168,23 @@ class Config(BaseModel):
         """Save configuration to YAML file"""
         path.parent.mkdir(parents=True, exist_ok=True)
         
+        # Convert Path objects to strings for YAML serialization
+        data = self.model_dump(exclude_defaults=False)
+        
+        def convert_paths(obj):
+            if isinstance(obj, dict):
+                return {k: convert_paths(v) for k, v in obj.items()}
+            elif isinstance(obj, list):
+                return [convert_paths(item) for item in obj]
+            elif isinstance(obj, Path):
+                return str(obj)
+            return obj
+        
+        data = convert_paths(data)
+        
         with open(path, 'w') as f:
             yaml.dump(
-                self.dict(exclude_unset=True, exclude_defaults=False),
+                data,
                 f,
                 default_flow_style=False,
                 sort_keys=False
@@ -191,8 +211,31 @@ def load_config(
     
     # Override with environment variables
     if use_env:
-        env_config = Config.from_env()
-        config = Config(**{**config.dict(), **env_config.dict(exclude_unset=True)})
+        # Apply env variables directly to existing config
+        env_mappings = {
+            "FLASHCARD_API_KEY": ("api", "api_key"),
+            "FLASHCARD_API_MODEL": ("api", "model"),
+            "FLASHCARD_API_TIMEOUT": ("api", "timeout"),
+            "FLASHCARD_MAX_CONCURRENT": ("processing", "max_concurrent"),
+            "FLASHCARD_CACHE_ENABLED": ("cache", "enabled"),
+            "FLASHCARD_CACHE_PATH": ("cache", "path"),
+            "FLASHCARD_DB_PATH": ("database", "path"),
+            "FLASHCARD_LOG_LEVEL": ("logging", "level"),
+        }
+        
+        for env_var, (section, field) in env_mappings.items():
+            value = os.getenv(env_var)
+            if value is not None:
+                section_obj = getattr(config, section)
+                # Convert types as needed
+                if field in ["timeout", "max_concurrent", "connection_pool_size"]:
+                    value = int(value)
+                elif field == "enabled":
+                    value = value.lower() in ["true", "1", "yes"]
+                elif field in ["path", "file"]:
+                    value = Path(value)
+                
+                setattr(section_obj, field, value)
     
     # Override with CLI arguments
     if kwargs:
