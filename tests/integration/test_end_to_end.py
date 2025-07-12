@@ -8,13 +8,13 @@ from pathlib import Path
 from unittest.mock import patch, AsyncMock
 
 from flashcard_pipeline import (
-    PipelineOrchestrator,
     VocabularyItem,
     Stage1Response,
     Stage2Response,
-    FlashcardRow,
-    Comparison
+    FlashcardRow
 )
+from flashcard_pipeline.pipeline.orchestrator import PipelineOrchestrator
+from flashcard_pipeline.models import Comparison
 
 
 @pytest.fixture
@@ -78,7 +78,7 @@ class TestEndToEndPipeline:
         """Test the complete pipeline with mocked API responses"""
         
         # Mock the API client
-        with patch('flashcard_pipeline.api_client.OpenRouterClient') as MockClient:
+        with patch('flashcard_pipeline.api.client.OpenRouterClient') as MockClient:
             mock_client = AsyncMock()
             MockClient.return_value = mock_client
             
@@ -120,7 +120,7 @@ class TestEndToEndPipeline:
     async def test_pipeline_with_cache_hit(self, temp_cache_dir):
         """Test that cache is properly utilized"""
         
-        with patch('flashcard_pipeline.api_client.OpenRouterClient') as MockClient:
+        with patch('flashcard_pipeline.api.client.OpenRouterClient') as MockClient:
             mock_client = AsyncMock()
             MockClient.return_value = mock_client
             
@@ -157,7 +157,7 @@ class TestEndToEndPipeline:
     async def test_pipeline_error_handling(self, temp_cache_dir):
         """Test error handling in the pipeline"""
         
-        with patch('flashcard_pipeline.api_client.OpenRouterClient') as MockClient:
+        with patch('flashcard_pipeline.api.client.OpenRouterClient') as MockClient:
             mock_client = AsyncMock()
             MockClient.return_value = mock_client
             
@@ -178,7 +178,7 @@ class TestEndToEndPipeline:
     async def test_rate_limiting_integration(self, temp_cache_dir):
         """Test that rate limiting is properly enforced"""
         
-        with patch('flashcard_pipeline.api_client.OpenRouterClient') as MockClient:
+        with patch('flashcard_pipeline.api.client.OpenRouterClient') as MockClient:
             mock_client = AsyncMock()
             MockClient.return_value = mock_client
             
@@ -226,7 +226,7 @@ class TestCLIIntegration:
     
     def test_cli_process_command(self, temp_cache_dir, sample_csv_file, monkeypatch):
         """Test the CLI process command"""
-        from flashcard_pipeline.cli import app
+        from flashcard_pipeline.cli.main import app
         from typer.testing import CliRunner
         
         runner = CliRunner()
@@ -251,7 +251,7 @@ class TestCLIIntegration:
     
     def test_cli_cache_stats_command(self, temp_cache_dir, monkeypatch):
         """Test the cache stats command"""
-        from flashcard_pipeline.cli import app
+        from flashcard_pipeline.cli.main import app
         from typer.testing import CliRunner
         
         runner = CliRunner()
@@ -281,7 +281,7 @@ class TestCircuitBreakerIntegration:
     async def test_circuit_breaker_opens_on_failures(self, temp_cache_dir):
         """Test that circuit breaker opens after consecutive failures"""
         
-        with patch('flashcard_pipeline.api_client.OpenRouterClient') as MockClient:
+        with patch('flashcard_pipeline.api.client.OpenRouterClient') as MockClient:
             mock_client = AsyncMock()
             MockClient.return_value = mock_client
             

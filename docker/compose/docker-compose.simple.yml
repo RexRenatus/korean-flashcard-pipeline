@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  flashcard-app:
+    image: korean-flashcard-pipeline:latest
+    container_name: flashcard-app
+    environment:
+      - PYTHONPATH=/app/src/python
+      - DATABASE_PATH=/app/data/pipeline.db
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./cache:/app/cache
+      - ./.env.production:/app/.env:ro
+    stdin_open: true
+    tty: true
+    command: python -m flashcard_pipeline --help

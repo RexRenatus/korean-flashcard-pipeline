@@ -1,0 +1,169 @@
+# AI Assistant Guidance for Documentation
+
+## Documentation Philosophy
+Clear, comprehensive, and user-focused documentation that helps users succeed with the flashcard pipeline.
+
+## Directory Structure Understanding
+
+### /user
+End-user facing documentation:
+- How to use the system
+- Common tasks and workflows
+- Troubleshooting guides
+
+### /architecture  
+Technical design documentation:
+- System design decisions
+- Component relationships
+- Data flow diagrams
+
+### /implementation
+How features were built:
+- Step-by-step implementation
+- Technical decisions
+- Code organization
+
+### /api
+API references:
+- Endpoint documentation
+- Request/response formats
+- Integration guides
+
+### /developer
+Contributor documentation:
+- Development setup
+- Coding standards
+- Testing guidelines
+
+## Writing Good Documentation
+
+### User Documentation
+```markdown
+# Feature Name
+
+## What it does
+Brief description in plain language.
+
+## How to use it
+Step-by-step instructions:
+1. First step
+2. Second step
+3. Expected result
+
+## Examples
+\`\`\`bash
+# Real command example
+flashcard-cli process vocab.csv --output cards.json
+\`\`\`
+
+## Common issues
+- Issue: Description
+  Solution: How to fix
+```
+
+### Technical Documentation
+```markdown
+# Component Name
+
+## Purpose
+Technical overview of why this exists.
+
+## Architecture
+How it fits into the system.
+
+## Implementation
+Key technical decisions and trade-offs.
+
+## API
+Public interfaces and contracts.
+
+## Performance
+Complexity, bottlenecks, optimization.
+```
+
+## Documentation Standards
+
+### Language
+- Use active voice
+- Keep sentences short
+- Define technical terms
+- Provide examples
+
+### Structure
+- Start with overview
+- Progress from simple to complex
+- Include visual aids when helpful
+- End with next steps
+
+### Code Examples
+- Test all examples
+- Include expected output
+- Show error cases
+- Keep examples focused
+
+## Common Documentation Tasks
+
+### Adding a New Feature
+1. Update user guide with how to use it
+2. Document API changes
+3. Add to architecture docs if significant
+4. Include in quick start if fundamental
+
+### Fixing Documentation
+1. Verify the issue exists
+2. Test the corrected information
+3. Update all related sections
+4. Check for broken links
+
+### Creating Diagrams
+```mermaid
+graph TD
+    A[User Input] --> B[Validation]
+    B --> C[Processing]
+    C --> D[Output]
+```
+
+## Documentation Review Checklist
+
+- [ ] Technically accurate
+- [ ] Examples work
+- [ ] Links valid
+- [ ] Formatting consistent
+- [ ] TOC updated
+- [ ] Status table current
+- [ ] Last updated date
+
+## Do Not
+
+- Leave placeholders or TODOs
+- Include outdated information
+- Use overly technical language in user docs
+- Forget to test examples
+- Create orphaned pages
+- Duplicate information unnecessarily
+
+## Tips for Specific Sections
+
+### User Documentation
+- Focus on tasks users want to accomplish
+- Use screenshots for complex UIs
+- Provide copy-paste commands
+- Anticipate common mistakes
+
+### Architecture Documentation
+- Explain "why" not just "what"
+- Include decision rationale
+- Show component relationships
+- Document constraints
+
+### API Documentation
+- Show request and response examples
+- Document all parameters
+- Include error responses
+- Provide integration examples
+
+### Developer Documentation
+- Keep setup steps current
+- Include troubleshooting
+- Document conventions
+- Explain testing approach

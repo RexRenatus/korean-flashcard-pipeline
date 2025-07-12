@@ -1,0 +1,161 @@
+# AI Assistant Guidance for Unit Tests
+
+## Unit Test Principles
+
+### What Makes a Good Unit Test?
+1. **Fast** - Runs in milliseconds
+2. **Isolated** - No dependencies on other tests
+3. **Repeatable** - Same result every time
+4. **Self-Checking** - Clear pass/fail
+5. **Timely** - Written with or before code
+
+## Common Unit Test Patterns
+
+### Testing Validation
+```python
+def test_model_validation():
+    # Valid case
+    valid_data = {"korean": "안녕", "english": "hello"}
+    model = VocabularyItem(**valid_data)
+    assert model.korean == "안녕"
+    
+    # Invalid case
+    invalid_data = {"korean": "", "english": "hello"}
+    with pytest.raises(ValidationError) as exc:
+        VocabularyItem(**invalid_data)
+    assert "korean" in str(exc.value)
+```
+
+### Testing State Changes
+```python
+def test_circuit_breaker_state_transition():
+    breaker = CircuitBreaker()
+    
+    # Initial state
+    assert breaker.state == "closed"
+    
+    # Cause failures
+    for _ in range(5):
+        breaker.record_failure()
+    
+    # Should be open
+    assert breaker.state == "open"
+```
+
+### Testing Algorithms
+```python
+def test_rate_limiter_token_bucket():
+    limiter = RateLimiter(rate=10, interval=1)
+    
+    # Should allow 10 requests
+    for _ in range(10):
+        assert limiter.is_allowed()
+    
+    # 11th should fail
+    assert not limiter.is_allowed()
+```
+
+## Mocking Strategies
+
+### Mock External Services
+```python
+@patch('flashcard_pipeline.api_client.httpx.AsyncClient')
+def test_api_client_retry(mock_client):
+    # Set up mock to fail then succeed
+    mock_client.post.side_effect = [
+        httpx.TimeoutException("Timeout"),
+        Mock(status_code=200, json=lambda: {"result": "success"})
+    ]
+    
+    client = APIClient()
+    result = await client.make_request(data)
+    
+    # Should retry and succeed
+    assert result["result"] == "success"
+    assert mock_client.post.call_count == 2
+```
+
+### Mock Time
+```python
+@freeze_time("2024-01-01 12:00:00")
+def test_cache_expiration():
+    cache = Cache(ttl=3600)
+    cache.set("key", "value")
+    
+    # Move forward in time
+    with freeze_time("2024-01-01 13:30:00"):
+        assert cache.get("key") is None  # Expired
+```
+
+## Testing Async Code
+
+### Basic Async Test
+```python
+@pytest.mark.asyncio
+async def test_async_operation():
+    result = await async_function()
+    assert result == expected
+```
+
+### Testing Concurrent Operations
+```python
+@pytest.mark.asyncio
+async def test_concurrent_safety():
+    counter = ConcurrentCounter()
+    
+    # Run 100 increments concurrently
+    tasks = [counter.increment() for _ in range(100)]
+    await asyncio.gather(*tasks)
+    
+    assert counter.value == 100
+```
+
+## Common Pitfalls to Avoid
+
+### Don't Test Implementation
+```python
+# Bad - Testing internal state
+def test_bad():
+    obj = MyClass()
+    obj.process()
+    assert obj._internal_state == 5  # Don't do this
+
+# Good - Testing behavior
+def test_good():
+    obj = MyClass()
+    result = obj.process()
+    assert result == expected_output
+```
+
+### Don't Use Real Resources
+```python
+# Bad
+def test_bad():
+    db = Database("production.db")  # Real database!
+    
+# Good
+def test_good():
+    db = Database(":memory:")  # In-memory for tests
+```
+
+## Phase-Specific Guidelines
+
+### Phase 1 (Foundation)
+- Focus on data validation
+- Test all error cases
+- Verify configuration loading
+
+### Phase 2 (Components)
+- Mock all external dependencies
+- Test state machines thoroughly
+- Verify algorithm correctness
+
+### Phase 3 (Integration)
+- Test component interactions
+- Verify data flow
+- Check error propagation
+
+### Phase 4 (Performance)
+- Establish baselines
+- Test with realistic data sizes
+- Profile memory usage

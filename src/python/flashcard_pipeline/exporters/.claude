@@ -1,0 +1,119 @@
+# AI Assistant Guidance for Exporters Module
+
+## Key Principle
+Each exporter should be self-contained and handle format-specific quirks internally.
+
+## Adding New Exporters
+
+### Step 1: Create Exporter Class
+```python
+from .base import BaseExporter
+
+class NewFormatExporter(BaseExporter):
+    def __init__(self, config=None):
+        super().__init__(config)
+        self.format_name = "newformat"
+        
+    async def export(self, flashcards, output_path):
+        # Implementation
+        pass
+```
+
+### Step 2: Register Exporter
+```python
+# In __init__.py
+from .newformat_exporter import NewFormatExporter
+
+EXPORTERS = {
+    "newformat": NewFormatExporter,
+    # ... other exporters
+}
+```
+
+### Step 3: Add Tests
+- Test with empty data
+- Test with Unicode (Korean)
+- Test with special characters
+- Test with large datasets
+- Test error conditions
+
+## Format-Specific Considerations
+
+### Anki
+- Note type must exist or be created
+- Media files need unique names
+- Cards must have unique IDs
+- HTML in fields needs sanitization
+
+### CSV
+- Excel compatibility issues with UTF-8
+- Line breaks in fields need escaping
+- Column order matters for some tools
+- BOM requirements vary
+
+### JSON
+- Date serialization format
+- Null vs empty string handling
+- Array vs object for single items
+- Pretty printing affects file size
+
+## Common Patterns
+
+### Progress Reporting
+```python
+async def export(self, flashcards, output_path, progress_callback=None):
+    total = len(flashcards)
+    for i, card in enumerate(flashcards):
+        # Process card
+        if progress_callback:
+            await progress_callback(i + 1, total)
+```
+
+### Streaming Large Files
+```python
+async def export_streaming(self, flashcards, output_path):
+    async with aiofiles.open(output_path, 'w') as f:
+        await f.write(self.get_header())
+        async for batch in self.batch_cards(flashcards):
+            await f.write(self.format_batch(batch))
+        await f.write(self.get_footer())
+```
+
+### Validation
+```python
+async def validate(self, flashcards):
+    errors = []
+    for i, card in enumerate(flashcards):
+        if not card.korean:
+            errors.append(f"Card {i}: Missing Korean term")
+        # More validation
+    return ValidationResult(is_valid=len(errors) == 0, errors=errors)
+```
+
+## Error Handling
+
+1. **File System Errors**: Check permissions, disk space
+2. **Encoding Issues**: Handle non-UTF-8 gracefully
+3. **Memory Limits**: Stream large exports
+4. **Format Constraints**: Validate before processing
+
+## Testing Checklist
+
+- [ ] Empty flashcard list
+- [ ] Single flashcard
+- [ ] Large dataset (1000+ cards)
+- [ ] Unicode characters
+- [ ] Special characters in filenames
+- [ ] Missing optional fields
+- [ ] Malformed data
+- [ ] File permissions issues
+- [ ] Disk space limitations
+
+## Do Not
+
+- Modify input flashcards
+- Load entire file into memory
+- Assume field presence
+- Hard-code file paths
+- Skip validation
+- Ignore encoding issues

@@ -1,0 +1,229 @@
+# AI Assistant Guidance for Developer Documentation
+
+## Purpose
+Help developers contribute effectively to the project by providing clear setup instructions, coding standards, and development workflows.
+
+## Key Documents
+
+### README.md (Main Dev Guide)
+- Quick start instructions
+- Development workflow
+- Common tasks
+
+### CODE_STYLE.md
+- Language-specific style guides
+- Formatting rules
+- Best practices
+
+### TESTING.md
+- Test organization
+- Writing tests
+- Coverage requirements
+
+### CONTRIBUTING.md
+- PR process
+- Code review guidelines
+- Community standards
+
+### SETUP.md
+- Detailed environment setup
+- Troubleshooting
+- Tool configuration
+
+## Writing Developer Docs
+
+### Setup Instructions
+```markdown
+## Prerequisites
+- Tool: version (why needed)
+- Tool: version (why needed)
+
+## Installation
+1. Step with command
+   \`\`\`bash
+   command here
+   \`\`\`
+2. Verify with:
+   \`\`\`bash
+   verification command
+   \`\`\`
+
+## Common Issues
+- Issue: Description
+  Solution: How to fix
+```
+
+### Code Examples
+```python
+# Good example with explanation
+def good_function(param: str) -> Result:
+    """Clear docstring."""
+    # Implementation
+    
+# Bad example with issues noted
+def bad_function(p):  # Missing types
+    # No docstring
+    pass  # Unclear purpose
+```
+
+## Development Workflow Documentation
+
+### Feature Development Flow
+```mermaid
+graph LR
+    A[Create Issue] --> B[Design Discussion]
+    B --> C[Create Branch]
+    C --> D[Write Tests]
+    D --> E[Implement]
+    E --> F[Update Docs]
+    F --> G[Submit PR]
+    G --> H[Code Review]
+    H --> I[Merge]
+```
+
+### PR Template
+```markdown
+## Description
+Brief description of changes.
+
+## Type of Change
+- [ ] Bug fix
+- [ ] New feature
+- [ ] Breaking change
+- [ ] Documentation update
+
+## Testing
+- [ ] Unit tests pass
+- [ ] Integration tests pass
+- [ ] Manual testing completed
+
+## Checklist
+- [ ] Code follows style guide
+- [ ] Self-review completed
+- [ ] Documentation updated
+- [ ] Tests added/updated
+```
+
+## Common Developer Tasks
+
+### Setting Up New Developers
+1. Environment setup guide
+2. First contribution tutorial
+3. Code architecture overview
+4. Key concepts explanation
+
+### Debugging Guide
+```markdown
+## Debugging Common Issues
+
+### Issue: Import Errors
+**Symptoms**: `ModuleNotFoundError`
+**Diagnosis**:
+1. Check virtual environment is activated
+2. Verify dependencies installed
+3. Check PYTHONPATH
+
+**Solution**:
+\`\`\`bash
+# Reinstall dependencies
+pip install -r requirements.txt
+\`\`\`
+```
+
+### Performance Profiling
+```markdown
+## Profiling Guide
+
+### CPU Profiling
+\`\`\`python
+import cProfile
+import pstats
+
+profiler = cProfile.Profile()
+profiler.enable()
+# Code to profile
+profiler.disable()
+
+stats = pstats.Stats(profiler)
+stats.sort_stats('cumulative')
+stats.print_stats(10)
+\`\`\`
+
+### Memory Profiling
+\`\`\`bash
+python -m memory_profiler script.py
+\`\`\`
+```
+
+## Tool Configuration
+
+### IDE Setup
+```markdown
+## VSCode Configuration
+
+### Extensions
+- Python
+- Pylance
+- Black Formatter
+
+### Settings.json
+\`\`\`json
+{
+    "python.linting.enabled": true,
+    "python.formatting.provider": "black",
+    "editor.formatOnSave": true
+}
+\`\`\`
+```
+
+### Git Configuration
+```markdown
+## Git Setup
+
+### Hooks
+\`\`\`bash
+# Install pre-commit
+pip install pre-commit
+pre-commit install
+\`\`\`
+
+### Aliases
+\`\`\`bash
+git config --global alias.co checkout
+git config --global alias.br branch
+git config --global alias.st status
+\`\`\`
+```
+
+## Best Practices Documentation
+
+### Code Review Guidelines
+1. Check functionality
+2. Verify tests
+3. Review documentation
+4. Consider performance
+5. Ensure security
+
+### Security Guidelines
+- Never commit secrets
+- Validate all inputs
+- Use parameterized queries
+- Follow OWASP guidelines
+
+## Do Not
+
+- Assume developer knowledge level
+- Skip troubleshooting sections
+- Use outdated examples
+- Forget about Windows developers
+- Ignore tool versions
+- Skip common errors
+
+## Maintenance
+
+### Keeping Docs Current
+- Update with each feature
+- Test setup instructions quarterly
+- Review for outdated tools
+- Gather developer feedback
+- Track common issues

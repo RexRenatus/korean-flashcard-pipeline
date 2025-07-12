@@ -1,0 +1,291 @@
+# AI Assistant Guidance for Templates Directory
+
+## Purpose
+Reusable templates for consistent output formatting, configuration examples, and user-facing content.
+
+## Template Philosophy
+Templates separate presentation from logic. They should be:
+- **Flexible**: Easy to customize
+- **Clear**: Self-documenting
+- **Safe**: Properly escaped
+- **Tested**: Verified output
+
+## Working with Templates
+
+### Creating New Templates
+```jinja2
+{# Template header comment #}
+{# Purpose: Generate flashcard in Anki format #}
+{# Variables: korean, english, romanization, examples #}
+
+<div class="flashcard">
+  <div class="front">
+    {{korean|safe}}  {# Marked safe if pre-sanitized #}
+  </div>
+  <div class="back">
+    {{english|e}}  {# HTML escaped #}
+    {% if romanization %}
+      <div class="pronunciation">[{{romanization}}]</div>
+    {% endif %}
+  </div>
+</div>
+```
+
+### Template Types
+
+#### 1. Export Templates
+For generating output files:
+```html
+<!-- Anki card template -->
+<div class="card type-{{type|lower}}">
+  <!-- Front side -->
+  <div class="korean">{{korean}}</div>
+  
+  <!-- Back side -->
+  <div class="meaning">{{english}}</div>
+  {% for example in examples %}
+    <div class="example">{{example.korean}} - {{example.english}}</div>
+  {% endfor %}
+</div>
+```
+
+#### 2. Configuration Templates
+Show users how to configure:
+```yaml
+# config.yaml.template
+# Copy this file to config.yaml and customize
+
+# Required settings
+api:
+  key: YOUR_API_KEY_HERE  # Get from https://openrouter.ai
+
+# Optional settings with defaults
+processing:
+  batch_size: 50  # Adjust based on your needs
+  cache: true     # Recommended for cost savings
+```
+
+#### 3. Prompt Templates
+For AI interactions:
+```text
+# flashcard_prompt.txt
+Create a flashcard for: {{term}}
+
+Context:
+- Language: {{source_language}} to {{target_language}}
+- Difficulty: {{difficulty_level}}
+- Type: {{word_type}}
+
+Requirements:
+1. Accurate translation
+2. Pronunciation guide
+3. Usage example
+4. Cultural notes if relevant
+
+Output format: JSON
+```
+
+## Best Practices
+
+### Variable Documentation
+```jinja2
+{#
+Template: daily_report.html
+Purpose: Generate daily summary report
+
+Required Variables:
+- date: ISO format date string
+- stats: Dictionary with keys:
+  - total_processed: integer
+  - success_rate: float (0-100)
+  - errors: list of error objects
+
+Optional Variables:
+- user_name: string (default: "User")
+- timezone: string (default: "UTC")
+#}
+```
+
+### Safe Templating
+```jinja2
+{# Bad - XSS vulnerable #}
+<div>{{user_input}}</div>
+
+{# Good - Escaped #}
+<div>{{user_input|e}}</div>
+
+{# When pre-sanitized #}
+<div>{{sanitized_html|safe}}</div>
+
+{# JSON context #}
+<script>
+  var data = {{data|tojson|safe}};
+</script>
+```
+
+### Conditional Rendering
+```jinja2
+{% if flashcards %}
+  <ul>
+  {% for card in flashcards %}
+    <li class="{% if card.difficulty > 7 %}hard{% endif %}">
+      {{card.term}} - {{card.meaning}}
+    </li>
+  {% endfor %}
+  </ul>
+{% else %}
+  <p>No flashcards found.</p>
+{% endif %}
+```
+
+## Common Patterns
+
+### Default Values
+```jinja2
+{# With filter #}
+{{username|default('Anonymous')}}
+
+{# With conditional #}
+{% set display_name = username or 'Anonymous' %}
+
+{# With fallback chain #}
+{{nickname|default(username)|default('User')}}
+```
+
+### Formatting
+```jinja2
+{# Numbers #}
+{{price|round(2)}} {# 12.35 #}
+{{count|format_number}} {# 1,234 #}
+
+{# Dates #}
+{{created_at|date('%Y-%m-%d')}}
+{{timestamp|timeago}} {# "2 hours ago" #}
+
+{# Strings #}
+{{title|title}} {# Title Case #}
+{{description|truncate(100)}}
+```
+
+### Loops with Status
+```jinja2
+{% for item in items %}
+  <div class="item">
+    {{loop.index}}. {{item.name}}
+    {% if loop.first %}(First!){% endif %}
+    {% if loop.last %}(Last!){% endif %}
+  </div>
+{% else %}
+  <p>No items available.</p>
+{% endfor %}
+```
+
+## Template Testing
+
+### Unit Test Template
+```python
+def test_flashcard_template():
+    template = get_template('export/anki.html')
+    
+    # Test basic rendering
+    result = template.render({
+        'korean': '안녕하세요',
+        'english': 'Hello',
+        'examples': []
+    })
+    assert '안녕하세요' in result
+    assert 'Hello' in result
+    
+    # Test XSS prevention
+    result = template.render({
+        'korean': '<script>alert("XSS")</script>',
+        'english': 'Test'
+    })
+    assert '<script>' not in result
+    assert '&lt;script&gt;' in result
+```
+
+### Visual Testing
+```python
+# Generate test output for manual review
+def generate_template_preview():
+    template = get_template('reports/summary.html')
+    
+    # Use realistic test data
+    test_data = {
+        'date': '2024-01-09',
+        'flashcards': generate_test_flashcards(50),
+        'stats': {
+            'total': 50,
+            'success_rate': 95.5
+        }
+    }
+    
+    html = template.render(test_data)
+    
+    # Save for browser preview
+    with open('template_preview.html', 'w') as f:
+        f.write(html)
+```
+
+## Do Not
+
+- Put logic in templates (keep it simple)
+- Trust user input (always escape)
+- Hardcode URLs or paths
+- Use complex expressions
+- Forget mobile responsiveness
+- Skip accessibility
+
+## Debugging Templates
+
+### Enable Debug Mode
+```python
+# Show undefined variables
+from jinja2 import DebugUndefined
+
+env = Environment(
+    undefined=DebugUndefined,
+    loader=FileSystemLoader('templates')
+)
+```
+
+### Template Errors
+```python
+try:
+    result = template.render(context)
+except TemplateError as e:
+    logger.error(f"Template error: {e}")
+    # Provide fallback or error message
+```
+
+### Missing Variables
+```jinja2
+{# Check if variable exists #}
+{% if korean is defined %}
+  {{korean}}
+{% else %}
+  <span class="error">Korean term missing</span>
+{% endif %}
+```
+
+## Performance Tips
+
+### Caching
+```python
+# Cache compiled templates
+env = Environment(
+    loader=FileSystemLoader('templates'),
+    cache_size=100,  # Cache 100 templates
+    auto_reload=False  # Don't check for changes
+)
+```
+
+### Minimize Logic
+```jinja2
+{# Bad - Complex logic in template #}
+{% if user.role == 'admin' and user.active and not user.suspended %}
+
+{# Good - Precompute in code #}
+{% if user.can_access %}
+```

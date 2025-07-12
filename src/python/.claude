@@ -1,0 +1,61 @@
+# AI Assistant Guidance for Python Source
+
+## Context
+This is the main Python implementation directory. Most active development happens here.
+
+## Key Rules
+
+### Virtual Environment
+- **ALWAYS** activate venv before running any Python commands
+- The venv is located at `./venv/`
+- If venv doesn't exist, create it first
+
+### Code Standards
+1. **Type Hints**: Required for all new functions
+2. **Docstrings**: Required for all public methods
+3. **Imports**: Use absolute imports from `flashcard_pipeline`
+4. **Error Handling**: Use custom exceptions from `exceptions.py`
+
+### Common Tasks
+
+#### Running Tests
+```bash
+# Activate venv first!
+source venv/bin/activate  # Linux/Mac
+pytest tests/
+```
+
+#### Adding New Features
+1. Determine which submodule it belongs to
+2. Create/update files in the appropriate directory
+3. Add tests in the corresponding test directory
+4. Update __init__.py imports if needed
+
+#### Debugging
+- Check logs in `/logs/` directory
+- Use logging module, not print statements
+- Set log level via environment variables
+
+### Package Structure
+- Main package: `flashcard_pipeline`
+- Submodules are organized by functionality
+- Each submodule should have its own __init__.py
+
+### Important Patterns
+1. **Async First**: Use async/await for I/O operations
+2. **Dependency Injection**: Pass dependencies, don't hardcode
+3. **Configuration**: Use environment variables or config files
+4. **Validation**: Use Pydantic models for all data structures
+
+## Do Not
+- Import from tests/ into main code
+- Use relative imports outside the package
+- Hardcode API keys or credentials
+- Skip type hints or docstrings
+- Use synchronous I/O in async functions
+
+## Testing Reminders
+- New features need tests
+- Update existing tests when changing behavior
+- Mock external API calls
+- Test both success and error cases

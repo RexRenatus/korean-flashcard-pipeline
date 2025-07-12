@@ -1,0 +1,210 @@
+# AI Assistant Guidance for Planning Directory
+
+## Critical Understanding
+These are LIVING DOCUMENTS that track actual project progress. They must be kept current and accurate.
+
+## Primary Rules
+
+### 1. Update Immediately
+- Update MASTER_TODO.md when completing tasks
+- Add to PROJECT_JOURNAL.md at session end
+- Never leave stale information
+
+### 2. Be Honest
+- Record actual progress, not wishes
+- Document blockers and issues
+- Track time realistically
+
+### 3. Maintain Continuity
+- Each session builds on previous
+- Reference past decisions
+- Link related items
+
+## Document-Specific Guidance
+
+### MASTER_TODO.md
+```markdown
+## Current Sprint (Date Range)
+
+### 🔴 Critical Tasks
+- [ ] Task description - **Deadline: Date**
+  - Acceptance criteria
+  - Related to: #issue
+  
+### 🟡 High Priority
+- [x] ~~Completed task~~ ✅ 2024-01-09
+- [ ] Pending task
+
+### 🚧 In Progress
+- [ ] Task name (Started: Date)
+  - Progress: 60% complete
+  - Blocker: Waiting on X
+  
+### ✅ Recently Completed
+- [x] Task - Completed 2024-01-09
+```
+
+### PROJECT_JOURNAL.md
+```markdown
+## 2024-01-09 Development Session
+
+### Session Goals
+What I planned to accomplish
+
+### Actual Progress
+- ✅ Completed: Specific achievement
+- 🚧 Partial: What got done, what remains
+- ❌ Blocked: What prevented progress
+
+### Technical Decisions
+- Chose X because Y
+- Discovered Z limitation
+
+### Time Tracking
+- Started: 09:00
+- Ended: 17:00
+- Effective time: 6.5 hours (breaks excluded)
+
+### Next Session Priority
+1. Complete blocked task
+2. Start new feature
+3. Review and test
+
+### Notes for Future Self
+- Remember to check X before Y
+- Solution for problem: [details]
+```
+
+### ARCHITECTURE_DECISIONS.md
+```markdown
+## ADR-001: Use AsyncIO over Threading
+
+### Status
+Accepted - 2024-01-09
+
+### Context
+Need concurrent processing for API calls
+
+### Decision
+Use Python's asyncio instead of threading
+
+### Consequences
++ Better I/O handling
++ Easier debugging
+- Single core limitation
+- Requires async libraries
+```
+
+## Common Planning Tasks
+
+### Starting New Phase
+1. Create phase plan document
+2. Break down into tasks
+3. Add all tasks to MASTER_TODO
+4. Set priorities and deadlines
+5. Document dependencies
+
+### Daily Planning
+1. Review yesterday's journal
+2. Check MASTER_TODO status
+3. Select today's tasks
+4. Update In Progress section
+5. Set realistic goals
+
+### Weekly Review
+1. Archive completed tasks
+2. Reprioritize remaining
+3. Update time estimates
+4. Document learnings
+5. Plan next week
+
+## Progress Tracking
+
+### Task Estimation
+```markdown
+- [ ] Task name (Est: 2h)
+  - Started: 10:00
+  - Actual: 3.5h
+  - Why longer: Unexpected complexity in X
+```
+
+### Velocity Tracking
+```markdown
+## Week of 2024-01-08
+
+### Planned vs Actual
+- Planned: 10 tasks
+- Completed: 7 tasks
+- Velocity: 70%
+
+### Time Analysis
+- Estimated: 40 hours
+- Actual: 45 hours
+- Accuracy: 89%
+```
+
+## Best Practices
+
+### Task Breakdown
+```markdown
+- [ ] Epic: Large feature
+  - [ ] Story: User-facing piece
+    - [ ] Task: Specific implementation
+      - [ ] Subtask: Atomic unit
+```
+
+### Blocker Documentation
+```markdown
+### ❌ BLOCKED: Cannot process files
+
+**Blocker**: API rate limit exceeded
+**Impact**: All processing stopped
+**Attempted Solutions**:
+1. Implemented backoff - didn't help
+2. Checked quota - still available
+
+**Resolution**: Found undocumented header requirement
+**Unblocked**: 2024-01-09 14:30
+**Prevention**: Added to error handling
+```
+
+## Do Not
+
+- Leave TODO items without dates
+- Skip journal entries
+- Modify historical entries
+- Hide problems or delays
+- Overcommit on tasks
+- Forget to celebrate wins
+
+## Planning Metrics
+
+Track these for better estimates:
+1. **Task Completion Rate**: Completed/Planned
+2. **Estimation Accuracy**: Actual/Estimated time
+3. **Blocker Frequency**: Blockers per week
+4. **Context Switches**: Task interruptions
+
+## Review Templates
+
+### Phase Retrospective
+```markdown
+## Phase X Retrospective
+
+### What Went Well
+- Achievement 1
+- Achievement 2
+
+### What Didn't
+- Issue 1: Root cause
+- Issue 2: Root cause
+
+### Learnings
+- Technical: Discovery
+- Process: Improvement
+- Team: Insight
+
+### Action Items
+- [ ] Implement improvement
+- [ ] Document solution
+```

@@ -1,0 +1,527 @@
+{
+  "permissions": {
+    "defaultMode": "default",
+    "allow": [
+      "Read",
+      "LS",
+      "Glob",
+      "Grep",
+      "NotebookRead",
+      "TodoWrite",
+      "WebSearch",
+      "WebFetch",
+      "Task"
+    ],
+    "prompt_before": [
+      "Write",
+      "Edit",
+      "MultiEdit",
+      "NotebookEdit",
+      "Bash"
+    ],
+    "additionalDirectories": [
+      "/mnt/c/Users/JackTheRipper/Desktop/(00) ClaudeCode/Anthropic_Flashcards"
+    ]
+  },
+  "hooks": {
+    "Start": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python scripts/phase_continuation_manager.py report",
+            "timeout": 5,
+            "description": "Show project status and next tasks at session start"
+          }
+        ]
+      }
+    ],
+    "Continue": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python scripts/phase_continuation_manager.py load",
+            "timeout": 3,
+            "description": "Restore previous session state"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python scripts/intelligent_assistant_dispatcher_v2.py pre_tool $CLAUDE_TOOL_NAME $CLAUDE_FILE_PATH",
+            "timeout": 5,
+            "description": "Unified pre-tool validation and workspace preparation"
+          },
+          {
+            "type": "command",
+            "command": "python scripts/mcp_ref_hooks/solid_enforcer.py $CLAUDE_FILE_PATH pre-check",
+            "timeout": 5,
+            "description": "Check SOLID principles before file operations",
+            "condition": "file_extension == '.py'"
+          },
+          {
+            "type": "command",
+            "command": "python scripts/ensure_datetime_accuracy.py validate $CLAUDE_FILE_PATH",
+            "timeout": 3,
+            "description": "Validate no hardcoded dates in files"
+          },
+          {
+            "type": "hardcoded_command",
+            "description": "File operation check",
+            "timeout": 5,
+            "script_content": "#!/bin/bash\ncd /mnt/c/Users/JackTheRipper/Desktop/\\(00\\)\\ ClaudeCode/Anthropic_Flashcards\nif [ \"$CLAUDE_VERBOSITY\" != \"quiet\" ]; then\n    echo '📝 Checking file operation...'\nfi\nexit 0"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "hardcoded_command",
+            "description": "Auto-activate virtual environment for Python commands",
+            "timeout": 1,
+            "script_content": "#!/bin/bash\nif echo \"$CLAUDE_COMMAND\" | grep -E '^(python|pip|pytest)' > /dev/null; then\n    export CLAUDE_COMMAND=\"source /mnt/c/Users/JackTheRipper/Desktop/\\(00\\)\\ ClaudeCode/Anthropic_Flashcards/venv/bin/activate && $CLAUDE_COMMAND\"\nfi\nexit 0"
+          },
+          {
+            "type": "command",
+            "command": "python scripts/verify_data_integrity.py --db pipeline.db --json",
+            "condition": "command.includes('migrate') || command.includes('database')",
+            "timeout": 10,
+            "description": "Verify database integrity before migrations"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python scripts/intelligent_assistant_dispatcher_v2.py post_write $CLAUDE_FILE_PATH",
+            "timeout": 8,
+            "description": "Post-write quality checks and performance monitoring"
+          },
+          {
+            "type": "command",
+            "command": "python scripts/ensure_datetime_accuracy.py update $CLAUDE_FILE_PATH",
+            "timeout": 3,
+            "description": "Update timestamps in modified files"
+          },
+          {
+            "type": "command",
+            "command": "python scripts/mcp_ref_hooks/solid_enforcer.py $CLAUDE_FILE_PATH post-check",
+            "timeout": 5,
+            "description": "Enforce SOLID principles after file operations",
+            "condition": "file_extension == '.py'"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "hardcoded_command",
+            "description": "Error notification",
+            "timeout": 1,
+            "script_content": "#!/bin/bash\nif [ \"$CLAUDE_EXIT_CODE\" != \"0\" ]; then\n    echo \"❌ Command failed (exit $CLAUDE_EXIT_CODE)\"\nfi\nexit 0"
+          },
+          {
+            "type": "command",
+            "command": "python scripts/verify_data_integrity.py --db pipeline.db --advanced",
+            "condition": "command.includes('migrate') || command.includes('database')",
+            "timeout": 10,
+            "description": "Check database integrity after operations"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python scripts/phase_continuation_manager.py save \"$CLAUDE_CURRENT_TASK\" \"$CLAUDE_NEXT_STEP_1\" \"$CLAUDE_NEXT_STEP_2\"",
+            "timeout": 3,
+            "description": "Save session progress and next steps"
+          },
+          {
+            "type": "hardcoded_command",
+            "description": "Session end reminder",
+            "timeout": 2,
+            "script_content": "#!/bin/bash\nif [ \"$CLAUDE_VERBOSITY\" != \"quiet\" ]; then\n    echo '📝 Session ended - Remember to update PROJECT_JOURNAL.md'\nfi\nexit 0"
+          }
+        ]
+      }
+    ],
+    "Error": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python scripts/intelligent_assistant_dispatcher_v2.py error \"$CLAUDE_ERROR_TYPE\" \"$CLAUDE_ERROR_MESSAGE\"",
+            "timeout": 5,
+            "description": "Quick error analysis with suggestions"
+          }
+        ]
+      }
+    ]
+  },
+  "hooks_config": {
+    "version": "1.0.0",
+    "description": "Centralized hook configuration for optimized performance",
+    "last_updated": "2025-01-11",
+    "global_config": {
+      "parallel_execution": true,
+      "max_concurrent": 5,
+      "default_timeout": 10,
+      "retry_policy": {
+        "max_attempts": 2,
+        "backoff_multiplier": 2,
+        "initial_delay": 1
+      },
+      "cache_policy": {
+        "enabled": true,
+        "ttl": 300,
+        "max_size_mb": 100
+      },
+      "metrics": {
+        "enabled": true,
+        "export_interval": 60,
+        "include_performance": true
+      }
+    },
+    "hook_groups": {
+      "validation": {
+        "description": "Fast validation hooks",
+        "max_timeout": 5,
+        "fail_fast": true,
+        "parallel": true
+      },
+      "enhancement": {
+        "description": "Code enhancement and analysis",
+        "max_timeout": 30,
+        "parallel": true
+      },
+      "monitoring": {
+        "description": "Monitoring and metrics",
+        "max_timeout": 10,
+        "async": true
+      },
+      "documentation": {
+        "description": "Documentation search and analysis",
+        "max_timeout": 8,
+        "parallel": true,
+        "cache_aggressive": true
+      },
+      "session_management": {
+        "description": "Session continuity and progress tracking",
+        "max_timeout": 5,
+        "parallel": false
+      },
+      "quality_assurance": {
+        "description": "Code quality and integrity checks",
+        "max_timeout": 10,
+        "parallel": true
+      }
+    },
+    "hooks": [
+      {
+        "id": "phase_continuation",
+        "group": "session_management",
+        "command": "python scripts/phase_continuation_manager.py",
+        "parallel": false,
+        "timeout": 5,
+        "description": "Manages session continuity and project progress tracking"
+      },
+      {
+        "id": "intelligent_dispatcher",
+        "group": "enhancement",
+        "command": "python scripts/intelligent_assistant_dispatcher_v2.py",
+        "parallel": true,
+        "timeout": 8,
+        "cache_key_pattern": "dispatcher:{operation}:{file_hash}",
+        "description": "Unified dispatcher for intelligent operations"
+      },
+      {
+        "id": "solid_enforcer",
+        "group": "quality_assurance",
+        "command": "python scripts/mcp_ref_hooks/solid_enforcer.py",
+        "parallel": true,
+        "timeout": 5,
+        "cache_key_pattern": "solid:{file_hash}:{check_level}",
+        "conditions": {
+          "file_extensions": [".py"],
+          "exclude_patterns": ["test_*.py", "*_test.py", "tests/*.py"]
+        },
+        "config": {
+          "check_level": "standard",
+          "block_on_critical": true
+        }
+      },
+      {
+        "id": "datetime_accuracy",
+        "group": "quality_assurance",
+        "command": "python scripts/ensure_datetime_accuracy.py",
+        "parallel": true,
+        "timeout": 3,
+        "cache_key_pattern": "datetime:{file_hash}",
+        "description": "Ensures accurate timestamps and prevents hardcoded dates"
+      },
+      {
+        "id": "data_integrity",
+        "group": "quality_assurance",
+        "command": "python scripts/verify_data_integrity.py",
+        "parallel": false,
+        "timeout": 10,
+        "description": "Validates database integrity and data consistency"
+      },
+      {
+        "id": "security_check",
+        "group": "validation",
+        "command": "python scripts/validators/security_check.py",
+        "parallel": true,
+        "timeout": 3,
+        "cache_key_pattern": "security:{file_hash}",
+        "conditions": {
+          "file_extensions": [".py", ".js", ".ts", ".yml", ".yaml", ".json"],
+          "max_file_size": 1048576
+        },
+        "severity_config": {
+          "min_severity": "high",
+          "block_on": ["critical"]
+        }
+      },
+      {
+        "id": "syntax_check",
+        "group": "validation",
+        "command": "python scripts/validators/syntax_check.py",
+        "parallel": true,
+        "timeout": 2,
+        "cache_key_pattern": "syntax:{file_hash}:{file_ext}",
+        "conditions": {
+          "file_extensions": [".py", ".js", ".json", ".yml", ".yaml", ".md", ".sh"]
+        }
+      },
+      {
+        "id": "doc_search",
+        "group": "documentation",
+        "command": "python scripts/mcp_ref_hooks/unified_documentation.py",
+        "parallel": true,
+        "timeout": 8,
+        "cache_key_pattern": "doc:{query_hash}:{keywords_hash}",
+        "config": {
+          "sources": ["public", "private"],
+          "max_results": 10,
+          "include_current_year": true
+        }
+      },
+      {
+        "id": "performance_monitor",
+        "group": "monitoring",
+        "command": "python scripts/hooks/performance_monitor.py",
+        "parallel": false,
+        "timeout": 2,
+        "async": true,
+        "run_condition": "always"
+      },
+      {
+        "id": "prompt_enhancer",
+        "group": "enhancement",
+        "command": "python scripts/enhance_prompt.py",
+        "parallel": false,
+        "timeout": 10,
+        "description": "Enhances user prompts with context and execution plans",
+        "interactive": true
+      }
+    ],
+    "operation_mappings": {
+      "validate": {
+        "description": "Run validation checks on files",
+        "hooks": ["security_check", "syntax_check", "solid_enforcer"],
+        "execution_mode": "parallel",
+        "aggregate_results": true
+      },
+      "documentation": {
+        "description": "Search and analyze documentation",
+        "hooks": ["doc_search"],
+        "execution_mode": "single",
+        "cache_aggressive": true
+      },
+      "error": {
+        "description": "Analyze errors and search for solutions",
+        "hooks": ["doc_search", "intelligent_dispatcher"],
+        "execution_mode": "parallel",
+        "config_override": {
+          "doc_search": {
+            "query_template": "{error_type} {error_message} solution 2025",
+            "keywords_focus": ["fix", "resolve", "solution"]
+          },
+          "intelligent_dispatcher": {
+            "operation": "error_analysis"
+          }
+        }
+      },
+      "monitor": {
+        "description": "Monitor hook performance",
+        "hooks": ["performance_monitor"],
+        "execution_mode": "async"
+      },
+      "session": {
+        "description": "Manage session continuity",
+        "hooks": ["phase_continuation"],
+        "execution_mode": "single"
+      },
+      "quality": {
+        "description": "Ensure code quality and integrity",
+        "hooks": ["solid_enforcer", "datetime_accuracy", "data_integrity"],
+        "execution_mode": "parallel"
+      },
+      "enhance": {
+        "description": "Enhance prompts and code",
+        "hooks": ["prompt_enhancer", "intelligent_dispatcher"],
+        "execution_mode": "sequential"
+      }
+    },
+    "circuit_breaker_config": {
+      "enabled": true,
+      "failure_threshold": 3,
+      "success_threshold": 2,
+      "timeout": 60,
+      "half_open_limit": 1,
+      "exclude_hooks": ["performance_monitor", "phase_continuation"]
+    },
+    "cache_strategies": {
+      "validation": {
+        "layers": ["memory", "disk"],
+        "ttl": {
+          "memory": 300,
+          "disk": 3600
+        },
+        "invalidate_on": ["file_change"],
+        "key_includes": ["file_hash", "check_level"]
+      },
+      "documentation": {
+        "layers": ["memory", "disk"],
+        "ttl": {
+          "memory": 600,
+          "disk": 86400
+        },
+        "invalidate_on": ["doc_update", "new_version"],
+        "key_includes": ["query", "keywords", "source"]
+      },
+      "session": {
+        "layers": ["disk"],
+        "ttl": {
+          "disk": 604800
+        },
+        "invalidate_on": ["manual_clear"],
+        "key_includes": ["session_id", "task_id"]
+      }
+    },
+    "performance_thresholds": {
+      "execution_time_p95": 10.0,
+      "error_rate": 0.1,
+      "timeout_rate": 0.05,
+      "alert_channels": ["log", "console"],
+      "auto_disable_on_failure": true
+    },
+    "logging": {
+      "enabled": true,
+      "level": "INFO",
+      "file": ".claude/logs/hooks.log",
+      "rotate_size_mb": 10,
+      "keep_files": 5,
+      "include_performance": true,
+      "redact_sensitive": true
+    }
+  },
+  "additional_scripts": {
+    "utilities": [
+      {
+        "name": "analyze_errors.py",
+        "path": "scripts/analyze_errors.py",
+        "description": "Analyzes error patterns and provides recommendations",
+        "usage": "python scripts/analyze_errors.py [error_log_file]"
+      },
+      {
+        "name": "generate_reports.py",
+        "path": "scripts/generate_reports.py",
+        "description": "Generates project status and quality reports",
+        "usage": "python scripts/generate_reports.py [report_type]"
+      },
+      {
+        "name": "export_flashcards.py",
+        "path": "scripts/export_flashcards.py",
+        "description": "Exports flashcards to various formats",
+        "usage": "python scripts/export_flashcards.py [format] [output_file]"
+      }
+    ],
+    "maintenance": [
+      {
+        "name": "automated_backup.py",
+        "path": "scripts/automated_backup.py",
+        "description": "Automated backup with rotation and compression",
+        "usage": "python scripts/automated_backup.py"
+      },
+      {
+        "name": "migrate_cache.py",
+        "path": "scripts/migrate_cache.py",
+        "description": "Migrates cache between different storage backends",
+        "usage": "python scripts/migrate_cache.py [source] [destination]"
+      },
+      {
+        "name": "verify_reorganization.py",
+        "path": "scripts/verify_reorganization.py",
+        "description": "Verifies database reorganization integrity",
+        "usage": "python scripts/verify_reorganization.py"
+      }
+    ],
+    "development": [
+      {
+        "name": "demo_intelligent_team.py",
+        "path": "scripts/demo_intelligent_team.py",
+        "description": "Demonstrates intelligent team collaboration",
+        "usage": "python scripts/demo_intelligent_team.py"
+      },
+      {
+        "name": "test_hook_optimization.py",
+        "path": "scripts/test_hook_optimization.py",
+        "description": "Tests and optimizes hook performance",
+        "usage": "python scripts/test_hook_optimization.py"
+      }
+    ],
+    "shell_scripts": [
+      {
+        "name": "auto_build.sh",
+        "path": "scripts/auto_build.sh",
+        "description": "Automated build process for the project",
+        "usage": "bash scripts/auto_build.sh"
+      },
+      {
+        "name": "deploy.sh",
+        "path": "scripts/deploy.sh",
+        "description": "Deployment script for production",
+        "usage": "bash scripts/deploy.sh [environment]"
+      },
+      {
+        "name": "backup.sh",
+        "path": "scripts/backup.sh",
+        "description": "Quick backup script",
+        "usage": "bash scripts/backup.sh"
+      },
+      {
+        "name": "set_verbosity.sh",
+        "path": "scripts/set_verbosity.sh",
+        "description": "Sets verbosity level for Claude operations",
+        "usage": "source scripts/set_verbosity.sh [quiet|normal|verbose]"
+      }
+    ]
+  }
+}

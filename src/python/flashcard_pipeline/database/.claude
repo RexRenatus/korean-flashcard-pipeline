@@ -1,0 +1,106 @@
+# AI Assistant Guidance for Database Module
+
+## Critical Rules
+
+### SQL Safety
+1. **ALWAYS use parameterized queries** - Never concatenate user input
+2. **Use transactions** for multi-statement operations
+3. **Handle connection cleanup** in finally blocks
+4. **Check constraints** before inserting data
+
+### Connection Management
+```python
+# Good - Using context manager
+async with db.get_connection() as conn:
+    await conn.execute(query, params)
+
+# Bad - Manual management
+conn = await db.get_connection()
+await conn.execute(query)  # What if this fails?
+conn.close()  # May never execute
+```
+
+## Common Patterns
+
+### Bulk Operations
+```python
+# Efficient bulk insert
+await db.execute_many(
+    "INSERT INTO vocabulary (korean, english) VALUES (?, ?)",
+    [(item.korean, item.english) for item in items]
+)
+```
+
+### Transaction Handling
+```python
+async with db.transaction() as tx:
+    vocab_id = await tx.create_vocabulary(data)
+    await tx.create_flashcard(vocab_id, content)
+    # Auto-commit on success, rollback on exception
+```
+
+### Migration Creation
+1. Generate migration file with timestamp
+2. Include both upgrade and downgrade
+3. Test on copy of production data
+4. Document breaking changes
+
+## Performance Optimization
+
+### Indexing Strategy
+- Index foreign keys
+- Index columns used in WHERE clauses
+- Composite indexes for multi-column queries
+- Monitor index usage
+
+### Query Optimization
+```python
+# Good - Single query with join
+SELECT v.*, f.* FROM vocabulary v 
+LEFT JOIN flashcards f ON v.id = f.vocabulary_id
+WHERE v.korean = ?
+
+# Bad - N+1 queries
+vocab = SELECT * FROM vocabulary WHERE korean = ?
+for v in vocab:
+    flashcard = SELECT * FROM flashcards WHERE vocabulary_id = ?
+```
+
+## Testing Database Code
+
+1. Use in-memory database for tests
+2. Reset database between tests
+3. Test constraint violations
+4. Verify transaction rollback
+5. Check connection pool behavior
+
+## Common Issues
+
+### SQLite Limitations
+- No true concurrent writes
+- Limited ALTER TABLE support
+- Case-sensitive LIKE by default
+- 64KB default page cache
+
+### Solutions
+- Use WAL mode for better concurrency
+- Plan schema carefully
+- Use COLLATE NOCASE for text
+- Increase cache size for performance
+
+## Do Not
+
+- Execute raw SQL from user input
+- Forget to close connections
+- Use SELECT * in production
+- Ignore database locks
+- Skip validation before insert
+- Assume operation order in async code
+
+## Debugging Tips
+
+1. Enable query logging
+2. Use EXPLAIN QUERY PLAN
+3. Monitor lock contention
+4. Check connection pool stats
+5. Profile slow queries

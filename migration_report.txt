@@ -1,0 +1,20 @@
+=== Database Migration Report ===
+Timestamp: 2025-07-10T12:21:20.967620
+Database: pipeline.db
+
+Summary: 1/2 migrations successful
+
+Migration Details:
+   003_database_reorganization_phase1.sql: Migration successful
+   004_database_reorganization_phase2.sql: Validation failed: SQL syntax error: no such table: main.vocabulary_master
+
+Schema Verification:
+   Schema validation failed:
+    - Missing table: nuance_data
+    - Only 0 indexes found, expected more
+
+Database Statistics:
+  Database size: 110,592 bytes
+  vocabulary_master: 0 rows
+  flashcards: 0 rows
+  processing_tasks: 0 rows

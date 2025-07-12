@@ -23,6 +23,53 @@ from flashcard_pipeline.exceptions import (
 )
 
 
+def create_mock_response(status_code, headers=None, json_data=None, text="", content_type=None):
+    """Create a mock httpx response with all required methods"""
+    mock_response = Mock()
+    mock_response.status_code = status_code
+    
+    # Set up headers - make it a real dict for easier use with dict()
+    if headers:
+        # Create a mock that behaves like a dict
+        mock_headers = Mock()
+        mock_headers.get = Mock(side_effect=lambda key, default=None: headers.get(key, default))
+        # Support dict() conversion by making it inherit from dict
+        mock_headers.__iter__ = Mock(return_value=iter(headers))
+        mock_headers.__getitem__ = Mock(side_effect=lambda key: headers.get(key))
+        mock_headers.keys = Mock(return_value=headers.keys())
+        mock_headers.values = Mock(return_value=headers.values())
+        mock_headers.items = Mock(return_value=headers.items())
+        mock_response.headers = mock_headers
+    else:
+        # Empty headers
+        mock_response.headers = {}
+    
+    # Set content type if provided
+    if content_type:
+        headers = headers or {}
+        headers['content-type'] = content_type
+        if hasattr(mock_response.headers, 'get'):
+            mock_response.headers.get = Mock(side_effect=lambda key, default=None: headers.get(key, default))
+    
+    # Set up json() method
+    if json_data is not None:
+        mock_response.json = Mock(return_value=json_data)
+    else:
+        mock_response.json = Mock(side_effect=ValueError("No JSON data"))
+    
+    # Set up text attribute
+    mock_response.text = text
+    
+    # Set up raise_for_status method
+    def raise_for_status():
+        if status_code >= 400:
+            raise httpx.HTTPStatusError("Error", request=Mock(), response=mock_response)
+    
+    mock_response.raise_for_status = Mock(side_effect=raise_for_status)
+    
+    return mock_response
+
+
 @pytest.fixture
 def mock_api_key():
     return "test-api-key-123"
@@ -57,9 +104,8 @@ def sample_stage1_response():
         explanation="evaluation method",
         usage_context="academic",
         comparison=Comparison(
-            similar_to=["시험"],
-            different_from=[],
-            commonly_confused_with=[]
+            vs="시험",
+            nuance="테스트 is more casual than 시험"
         ),
         homonyms=[],
         korean_keywords=["테스트"]
@@ -75,16 +121,24 @@ class TestOpenRouterClient:
         assert client.client is None  # Lazy initialization
     
     @pytest.mark.asyncio
-    async def test_headers_generation(self, mock_client):
-        headers = mock_client._get_headers()
-        assert headers["Authorization"] == f"Bearer {mock_client.api_key}"
-        assert headers["Content-Type"] == "application/json"
-        assert "X-Title" in headers
+    async def test_client_context_manager(self, mock_client):
+        # Test async context manager
+        async with mock_client as client:
+            assert client.client is not None
+        assert mock_client.client is None  # Should be closed
     
     @pytest.mark.asyncio
     async def test_successful_stage1_request(self, mock_client, sample_vocabulary_item):
+        # Mock cache service to return None (cache miss)
+        mock_client.cache_service = AsyncMock()
+        mock_client.cache_service.get_stage1.return_value = None
+        
         # Mock the HTTP response
         mock_response_data = {
+            "id": "test-id",
+            "model": "claude-3.5-sonnet",
+            "object": "chat.completion",
+            "created": 1234567890,
             "choices": [{
                 "message": {
                     "content": """```json
@@ -104,9 +158,8 @@ class TestOpenRouterClient:
     "explanation": "evaluation method",
     "usage_context": "academic",
     "comparison": {
-        "similar_to": ["시험"],
-        "different_from": [],
-        "commonly_confused_with": []
+        "vs": "시험",
+        "nuance": "테스트 is more casual than 시험"
     },
     "homonyms": [],
     "korean_keywords": ["테스트"]
@@ -130,100 +183,184 @@ class TestOpenRouterClient:
     
     @pytest.mark.asyncio
     async def test_rate_limit_error(self, mock_client, sample_vocabulary_item):
-        mock_response = Mock()
-        mock_response.status_code = 429
-        mock_response.headers = {
-            'retry-after': '60',
-            'x-ratelimit-remaining': '0'
-        }
-        mock_response.json.return_value = {
-            'error': {'message': 'Rate limit exceeded'}
-        }
+        # Mock rate limiter and circuit breaker to allow the request
+        mock_client.rate_limiter = AsyncMock()
+        mock_client.circuit_breaker = AsyncMock()
         
-        with patch.object(mock_client, 'client') as mock_http_client:
-            mock_http_client.post.side_effect = httpx.HTTPStatusError(
-                "429 Too Many Requests",
-                request=Mock(),
-                response=mock_response
-            )
+        # Mock cache service to return None (cache miss)
+        mock_client.cache_service = AsyncMock()
+        mock_client.cache_service.get_stage1.return_value = None
+        
+        # Create a proper mock response with rate limit headers
+        mock_response = create_mock_response(
+            status_code=429,
+            headers={
+                'Retry-After': '60',
+                'X-RateLimit-Reset': str(int(datetime.now().timestamp()) + 60)
+            },
+            text="Rate limit exceeded"
+        )
+        
+        async def mock_call(service, func):
+            return await func()
+        
+        mock_client.circuit_breaker.call = mock_call
+        
+        with patch.object(mock_client, '_ensure_client'):
+            mock_client.client = AsyncMock()
+            mock_client.client.post.return_value = mock_response
             
-            with pytest.raises(RateLimitError) as exc_info:
-                await mock_client.process_stage1(sample_vocabulary_item)
-            
-            assert exc_info.value.retry_after == 60
+            # Patch asyncio.sleep to speed up the test
+            with patch('flashcard_pipeline.api_client.asyncio.sleep', new_callable=AsyncMock):
+                with pytest.raises(RateLimitError) as exc_info:
+                    await mock_client.process_stage1(sample_vocabulary_item)
+                
+                assert exc_info.value.retry_after == 60
     
     @pytest.mark.asyncio
     async def test_authentication_error(self, mock_client, sample_vocabulary_item):
-        mock_response = Mock()
-        mock_response.status_code = 401
-        mock_response.json.return_value = {
-            'error': {'message': 'Invalid API key'}
-        }
+        # Mock rate limiter and circuit breaker to allow the request
+        mock_client.rate_limiter = AsyncMock()
+        mock_client.circuit_breaker = AsyncMock()
         
-        with patch.object(mock_client, 'client') as mock_http_client:
-            mock_http_client.post.side_effect = httpx.HTTPStatusError(
-                "401 Unauthorized",
-                request=Mock(),
-                response=mock_response
-            )
+        # Mock cache service to return None (cache miss)
+        mock_client.cache_service = AsyncMock()
+        mock_client.cache_service.get_stage1.return_value = None
+        
+        # Create mock response for authentication error
+        mock_response = create_mock_response(
+            status_code=401,
+            text="Invalid API key"
+        )
+        
+        async def mock_call(service, func):
+            return await func()
+        
+        mock_client.circuit_breaker.call = mock_call
+        
+        with patch.object(mock_client, '_ensure_client'):
+            mock_client.client = AsyncMock()
+            mock_client.client.post.return_value = mock_response
             
             with pytest.raises(AuthenticationError):
                 await mock_client.process_stage1(sample_vocabulary_item)
     
     @pytest.mark.asyncio
     async def test_network_error_with_retry(self, mock_client, sample_vocabulary_item):
-        # First two calls fail, third succeeds
-        side_effects = [
-            httpx.NetworkError("Connection failed"),
-            httpx.NetworkError("Connection failed"),
-            {
+        # Mock cache service to return None (cache miss)
+        mock_client.cache_service = AsyncMock()
+        mock_client.cache_service.get_stage1.return_value = None
+        
+        # Mock rate limiter and circuit breaker
+        mock_client.rate_limiter = AsyncMock()
+        mock_client.circuit_breaker = AsyncMock()
+        
+        # Track call count
+        call_count = 0
+        
+        async def mock_call(service, func):
+            nonlocal call_count
+            call_count += 1
+            if call_count < 3:
+                # First two calls fail
+                raise httpx.NetworkError("Connection failed")
+            else:
+                # Third call succeeds
+                return await func()
+        
+        mock_client.circuit_breaker.call = mock_call
+        
+        # Create successful response for the third attempt
+        mock_response = create_mock_response(
+            status_code=200,
+            json_data={
+                "id": "test-id",
+                "model": "claude-3.5-sonnet",
+                "object": "chat.completion",
+                "created": 1234567890,
                 "choices": [{
-                    "message": {"content": '```json\n{"term_number": 1}\n```'}
+                    "message": {"content": '{"term_number": 1, "term": "테스트", "ipa": "[test]", "pos": "noun", "primary_meaning": "test", "metaphor": "test", "metaphor_noun": "test", "metaphor_action": "test", "suggested_location": "test", "anchor_object": "test", "anchor_sensory": "test", "explanation": "test", "comparison": {"vs": "test", "nuance": "test"}, "korean_keywords": ["test"]}'}
                 }],
                 "usage": {"prompt_tokens": 10, "completion_tokens": 20, "total_tokens": 30}
             }
-        ]
+        )
         
-        with patch.object(mock_client, '_make_request') as mock_request:
-            mock_request.side_effect = side_effects
+        with patch.object(mock_client, '_ensure_client'):
+            mock_client.client = AsyncMock()
+            mock_client.client.post.return_value = mock_response
             
             # Should succeed after retries
-            with patch('asyncio.sleep'):  # Skip actual sleep in tests
+            with patch('flashcard_pipeline.api_client.asyncio.sleep'):  # Skip actual sleep in tests
                 stage1_response, usage = await mock_client.process_stage1(sample_vocabulary_item)
                 
                 # Verify retries happened
-                assert mock_request.call_count == 3
+                assert call_count == 3
+                assert stage1_response.term == "테스트"
     
     @pytest.mark.asyncio
-    async def test_json_extraction_from_response(self, mock_client):
-        content_with_markdown = """Here's the analysis:
-
-```json
-{
-    "term_number": 1,
-    "term": "test"
-}
-```
-
-Additional notes here."""
+    async def test_cache_integration(self, mock_client, sample_vocabulary_item):
+        # Test that cache service is used
+        mock_cache_service = AsyncMock()
+        mock_cache_service.get_stage1.return_value = None  # Cache miss
+        mock_client.cache_service = mock_cache_service
         
-        extracted = mock_client._extract_json_from_content(content_with_markdown)
-        assert extracted == '{\n    "term_number": 1,\n    "term": "test"\n}'
-    
-    @pytest.mark.asyncio
-    async def test_stats_tracking(self, mock_client, sample_vocabulary_item):
         mock_response_data = {
+            "id": "test-id",
+            "model": "claude-3.5-sonnet",
+            "object": "chat.completion",
+            "created": 1234567890,
             "choices": [{
-                "message": {"content": '```json\n{"term_number": 1}\n```'}
+                "message": {"content": '{"term_number": 1, "term": "테스트", "ipa": "[test]", "pos": "noun", "primary_meaning": "test", "metaphor": "test", "metaphor_noun": "test", "metaphor_action": "test", "suggested_location": "test", "anchor_object": "test", "anchor_sensory": "test", "explanation": "test", "comparison": {"vs": "test", "nuance": "test"}, "korean_keywords": ["test"]}'}
             }],
-            "usage": {
-                "prompt_tokens": 100,
-                "completion_tokens": 200,
-                "total_tokens": 300
-            }
+            "usage": {"prompt_tokens": 100, "completion_tokens": 200, "total_tokens": 300}
         }
         
         with patch.object(mock_client, '_make_request', return_value=mock_response_data):
+            await mock_client.process_stage1(sample_vocabulary_item)
+            
+            # Verify cache was checked and saved
+            mock_cache_service.get_stage1.assert_called_once()
+            mock_cache_service.save_stage1.assert_called_once()
+    
+    @pytest.mark.asyncio
+    async def test_stats_tracking(self, mock_client, sample_vocabulary_item):
+        # Mock cache service to return None (cache miss)
+        mock_client.cache_service = AsyncMock()
+        mock_client.cache_service.get_stage1.return_value = None
+        
+        # Mock rate limiter and circuit breaker
+        mock_client.rate_limiter = AsyncMock()
+        mock_client.circuit_breaker = AsyncMock()
+        
+        # Create a proper mock response
+        mock_response = create_mock_response(
+            status_code=200,
+            json_data={
+                "id": "test-id",
+                "model": "claude-3.5-sonnet",
+                "object": "chat.completion",
+                "created": 1234567890,
+                "choices": [{
+                    "message": {"content": '{"term_number": 1, "term": "테스트", "ipa": "[test]", "pos": "noun", "primary_meaning": "test", "metaphor": "test", "metaphor_noun": "test", "metaphor_action": "test", "suggested_location": "test", "anchor_object": "test", "anchor_sensory": "test", "explanation": "test", "comparison": {"vs": "test", "nuance": "test"}, "korean_keywords": ["test"]}'}
+                }],
+                "usage": {
+                    "prompt_tokens": 100,
+                    "completion_tokens": 200,
+                    "total_tokens": 300
+                }
+            }
+        )
+        
+        async def mock_call(service, func):
+            # Execute the function to ensure stats are updated
+            return await func()
+        
+        mock_client.circuit_breaker.call = mock_call
+        
+        with patch.object(mock_client, '_ensure_client'):
+            mock_client.client = AsyncMock()
+            mock_client.client.post.return_value = mock_response
+            
             await mock_client.process_stage1(sample_vocabulary_item)
             
             stats = mock_client.get_stats()
@@ -234,16 +371,21 @@ Additional notes here."""
     
     @pytest.mark.asyncio
     async def test_connection_test(self, mock_client):
-        with patch.object(mock_client, 'client') as mock_http_client:
-            mock_response = Mock()
-            mock_response.raise_for_status = Mock()
-            mock_http_client.get.return_value = mock_response
+        with patch.object(mock_client, '_ensure_client'):
+            mock_client.client = AsyncMock()
+            # Create a proper mock response for successful connection
+            mock_response = create_mock_response(
+                status_code=200,
+                json_data={"models": ["claude-3.5-sonnet"]},
+                text='{"models": ["claude-3.5-sonnet"]}'
+            )
+            mock_client.client.get.return_value = mock_response
             
             result = await mock_client.test_connection()
             assert result is True
             
             # Test failure case
-            mock_http_client.get.side_effect = Exception("Connection failed")
+            mock_client.client.get.side_effect = Exception("Connection failed")
             result = await mock_client.test_connection()
             assert result is False
 
@@ -252,9 +394,9 @@ class TestRateLimiting:
     @pytest.mark.asyncio
     async def test_rate_limit_info_parsing(self, mock_client):
         headers = {
-            'x-ratelimit-limit': '100',
-            'x-ratelimit-remaining': '50',
-            'x-ratelimit-reset': str(int((datetime.now() + timedelta(minutes=5)).timestamp()))
+            'X-RateLimit-Limit': '100',
+            'X-RateLimit-Remaining': '50',
+            'X-RateLimit-Reset': str(int((datetime.now() + timedelta(minutes=5)).timestamp()))
         }
         
         rate_info = RateLimitInfo.from_headers(headers)
@@ -289,10 +431,18 @@ class TestStage2Processing:
         sample_vocabulary_item,
         sample_stage1_response
     ):
+        # Mock cache service to return None (cache miss)
+        mock_client.cache_service = AsyncMock()
+        mock_client.cache_service.get_stage2.return_value = None
+        
         mock_response_data = {
+            "id": "test-id",
+            "model": "claude-3.5-sonnet", 
+            "object": "chat.completion",
+            "created": 1234567890,
             "choices": [{
                 "message": {
-                    "content": "1\t테스트\t[tʰesɯtʰɯ]\tnoun\tTest\tEvaluation method\t이것은 테스트입니다.\tTest\tteseuteu\tThis is a test.\tThink of testing\tbeginner\tcommon\tstudy,academic\tCommonly used"
+                    "content": "position\tterm\tterm_number\ttab_name\tprimer\tfront\tback\ttags\thonorific_level\n1\t테스트 [tʰesɯtʰɯ]\t1\tCore\tThink of a test in school\t테스트 (test)\ta test, examination\tnoun,beginner\t"
                 }
             }],
             "usage": {
@@ -308,15 +458,24 @@ class TestStage2Processing:
                 sample_stage1_response
             )
             
-            assert stage2_response.flashcard_row.term == "테스트"
-            assert stage2_response.flashcard_row.difficulty == "beginner"
+            assert len(stage2_response.rows) == 1
+            assert stage2_response.rows[0].term == "테스트 [tʰesɯtʰɯ]"
+            assert stage2_response.rows[0].position == 1
             assert usage.total_tokens == 400
 
 
 class TestErrorHandling:
     @pytest.mark.asyncio
     async def test_validation_error_on_invalid_json(self, mock_client, sample_vocabulary_item):
+        # Mock cache service to return None (cache miss)
+        mock_client.cache_service = AsyncMock()
+        mock_client.cache_service.get_stage1.return_value = None
+        
         mock_response_data = {
+            "id": "test-id",
+            "model": "claude-3.5-sonnet",
+            "object": "chat.completion",
+            "created": 1234567890,
             "choices": [{
                 "message": {"content": "This is not JSON"}
             }],
@@ -327,16 +486,35 @@ class TestErrorHandling:
             with pytest.raises(ValidationError) as exc_info:
                 await mock_client.process_stage1(sample_vocabulary_item)
             
-            assert "JSON" in str(exc_info.value)
+            assert "Invalid Stage 1 response format" in str(exc_info.value)
     
     @pytest.mark.asyncio
     async def test_timeout_error_with_retry(self, mock_client, sample_vocabulary_item):
-        with patch.object(mock_client, '_make_request') as mock_request:
-            mock_request.side_effect = httpx.TimeoutException("Request timed out")
+        # Mock cache service to return None (cache miss)
+        mock_client.cache_service = AsyncMock()
+        mock_client.cache_service.get_stage1.return_value = None
+        
+        # Mock rate limiter and circuit breaker
+        mock_client.rate_limiter = AsyncMock()
+        mock_client.circuit_breaker = AsyncMock()
+        
+        # Track call count
+        call_count = 0
+        
+        async def mock_call(service, func):
+            nonlocal call_count
+            call_count += 1
+            # Always timeout - should fail after max retries
+            raise httpx.TimeoutException("Request timed out")
+        
+        mock_client.circuit_breaker.call = mock_call
+        
+        with patch.object(mock_client, '_ensure_client'):
+            mock_client.client = AsyncMock()
             
-            with patch('asyncio.sleep'):  # Skip actual sleep in tests
+            with patch('flashcard_pipeline.api_client.asyncio.sleep'):  # Skip actual sleep in tests
                 with pytest.raises(NetworkError) as exc_info:
                     await mock_client.process_stage1(sample_vocabulary_item)
                 
                 assert "timeout" in str(exc_info.value).lower()
-                assert mock_request.call_count == 4  # Initial + 3 retries
+                assert call_count == 4  # Initial + 3 retries

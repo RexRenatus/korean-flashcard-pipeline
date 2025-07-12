@@ -198,6 +198,10 @@ class TestConfigurationValidation:
     
     def test_api_key_validation(self, monkeypatch):
         """Test API key validation"""
+        # Clear any existing API keys first
+        monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+        monkeypatch.delenv("FLASHCARD_API_KEY", raising=False)
+        
         config = Config()
         
         # No API key set
@@ -208,7 +212,7 @@ class TestConfigurationValidation:
         assert config.validate_api_key() == True
         
         # Clear and set FLASHCARD_API_KEY
-        monkeypatch.delenv("OPENROUTER_API_KEY")
+        monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
         monkeypatch.setenv("FLASHCARD_API_KEY", "test-key-2")
         assert config.validate_api_key() == True
     

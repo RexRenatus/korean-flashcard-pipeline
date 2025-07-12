@@ -1,0 +1,82 @@
+version: '3.8'
+
+services:
+  flashcard-pipeline:
+    build: .
+    image: korean-flashcard-pipeline:latest
+    container_name: flashcard-pipeline
+    environment:
+      - PYTHONPATH=/app/src/python
+      - DATABASE_PATH=/app/data/pipeline.db
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./cache:/app/cache
+      - ./.env:/app/.env:ro
+    ports:
+      - "8080:8080"
+    command: python -m flashcard_pipeline.pipeline_cli --help
+    
+  # Database ingress service
+  ingress:
+    image: korean-flashcard-pipeline:latest
+    container_name: flashcard-ingress
+    environment:
+      - PYTHONPATH=/app/src/python
+      - DATABASE_PATH=/app/data/pipeline.db
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./.env:/app/.env:ro
+    command: python -m flashcard_pipeline.pipeline_cli ingress --help
+    profiles:
+      - ingress
+
+  # Batch processor service
+  processor:
+    image: korean-flashcard-pipeline:latest
+    container_name: flashcard-processor
+    environment:
+      - PYTHONPATH=/app/src/python
+      - DATABASE_PATH=/app/data/pipeline.db
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./cache:/app/cache
+      - ./.env:/app/.env:ro
+    command: python -m flashcard_pipeline.pipeline_cli process --source database --concurrent 10
+    profiles:
+      - processing
+
+  # Database migration service
+  migrate:
+    image: korean-flashcard-pipeline:latest
+    container_name: flashcard-migrate
+    environment:
+      - PYTHONPATH=/app/src/python
+      - DATABASE_PATH=/app/data/flashcards.db
+      - DOCKER_CONTAINER=1
+    volumes:
+      - ./data:/app/data
+      - ./migrations:/app/migrations:ro
+      - ./.env:/app/.env:ro
+    command: python /app/scripts/run_migrations.py
+    profiles:
+      - migration
+
+# Example usage:
+# docker-compose build
+# 
+# Run migrations:
+# docker-compose run --rm migrate
+# OR use the helper script:
+# ./docker-migrate.sh
+#
+# Process vocabulary:
+# docker-compose run --rm flashcard-pipeline python /app/process_vocab_docker.py
+# OR use the helper script:
+# ./docker-process.sh
+#
+# CLI commands:
+# docker-compose run --rm flashcard-pipeline python -m flashcard_pipeline.pipeline_cli ingress import /app/data/input/vocabulary.csv
+# docker-compose run --rm flashcard-pipeline python -m flashcard_pipeline.pipeline_cli process --source database

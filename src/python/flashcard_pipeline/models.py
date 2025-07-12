@@ -5,6 +5,25 @@ from datetime import datetime, timedelta
 from enum import Enum
 from pydantic import BaseModel, Field, field_validator
 import json
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+class NuanceLevel(str, Enum):
+    """Nuance level categories"""
+    BASIC = "basic"
+    INTERMEDIATE = "intermediate"
+    ADVANCED = "advanced"
+    NATIVE = "native"
+
+
+class FlashcardDifficulty(str, Enum):
+    """Flashcard difficulty levels"""
+    BEGINNER = "beginner"
+    INTERMEDIATE = "intermediate"
+    ADVANCED = "advanced"
+    EXPERT = "expert"
 
 
 class PartOfSpeech(str, Enum):
@@ -19,11 +38,42 @@ class PartOfSpeech(str, Enum):
     UNKNOWN = "unknown"
 
 
+class ExportFormat(str, Enum):
+    """Supported export formats"""
+    TSV = "tsv"
+    ANKI = "anki"
+    JSON = "json"
+    PDF = "pdf"
+    CSV = "csv"
+    MARKDOWN = "markdown"
+    HTML = "html"
+
+
+class ValidationStatus(str, Enum):
+    """Flashcard validation status"""
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    IN_REVIEW = "in_review"
+
+
+class ProcessingStage(str, Enum):
+    """Processing stage for flashcards"""
+    INGRESS = "ingress"
+    STAGE1 = "stage1"
+    STAGE2 = "stage2"
+    VALIDATION = "validation"
+    EXPORT = "export"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
 class VocabularyItem(BaseModel):
     """Input vocabulary item from CSV"""
     position: int = Field(gt=0)
     term: str = Field(min_length=1)
     type: str = Field(default="unknown")
+    nuance_level: Optional[NuanceLevel] = None
     
     @field_validator('type', mode='before')
     @classmethod
@@ -41,6 +91,10 @@ class VocabularyItem(BaseModel):
             'part': PartOfSpeech.PARTICLE.value
         }
         return type_mapping.get(v.lower(), v.lower())
+    
+    def cache_key(self) -> str:
+        """Generate cache key for this vocabulary item"""
+        return f"{self.term}:{self.type}:{self.position}"
 
 
 class Homonym(BaseModel):
@@ -126,7 +180,7 @@ class Stage2Request(BaseModel):
                 "content": json.dumps({
                     "position": item.position,
                     "term": item.term,
-                    "stage1_result": stage1_result.dict()
+                    "stage1_result": stage1_result.model_dump()
                 }, ensure_ascii=False)
             }]
         )
@@ -181,6 +235,10 @@ class Stage2Response(BaseModel):
             parts = line.split('\t')
             if len(parts) >= 8:
                 try:
+                    # Skip if this is another header line
+                    if parts[0] == 'position':
+                        continue
+                        
                     row = FlashcardRow(
                         position=int(parts[0]),
                         term=parts[1],
@@ -194,8 +252,11 @@ class Stage2Response(BaseModel):
                     )
                     rows.append(row)
                 except ValueError as e:
-                    raise ValueError(f"Error parsing TSV line: {e}\nLine: {line}\nParts: {parts}")
+                    # Log the error but continue processing
+                    logger.warning(f"Skipping invalid TSV line: {e}")
+                    continue
         
+        # Return response with whatever rows we parsed (can be empty)
         return cls(rows=rows)
     
     def to_tsv(self) -> str:
@@ -344,3 +405,128 @@ class CacheStats(BaseModel):
         if total_requests == 0:
             return 0.0
         return (total_hits / total_requests) * 100
+
+
+class Tag(BaseModel):
+    """Tag model for flashcards"""
+    id: Optional[str] = None
+    name: str
+    description: Optional[str] = None
+    created_at: Optional[datetime] = None
+    usage_count: int = 0
+
+
+class Deck(BaseModel):
+    """Deck model for organizing flashcards"""
+    id: Optional[str] = None
+    name: str
+    description: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+    card_count: int = 0
+    parent_deck_id: Optional[str] = None
+
+
+class Flashcard(BaseModel):
+    """Complete flashcard model"""
+    id: Optional[str] = None
+    korean: str
+    english: str
+    romanization: Optional[str] = None
+    explanation: Optional[str] = None
+    deck_id: Optional[str] = None
+    tags: List[Tag] = Field(default_factory=list)
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+    validation_status: Optional[ValidationStatus] = ValidationStatus.PENDING
+    processing_stage: Optional[ProcessingStage] = ProcessingStage.INGRESS
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+    
+    # Additional fields from FlashcardRow
+    position: Optional[int] = None
+    term_number: Optional[int] = None
+    tab_name: Optional[str] = None
+    primer: Optional[str] = None
+    honorific_level: Optional[str] = None
+
+
+class Stage1Insight(BaseModel):
+    """Insights from Stage 1 analysis"""
+    term: str
+    insight_type: str
+    content: str
+    confidence: float = Field(ge=0.0, le=1.0)
+
+
+class FlashcardFront(BaseModel):
+    """Front side of a flashcard"""
+    korean: str
+    romanization: str
+    audio_url: Optional[str] = None
+
+
+class FlashcardBack(BaseModel):
+    """Back side of a flashcard"""
+    english: str
+    explanation: str
+    example_sentence: Optional[str] = None
+    literal_translation: Optional[str] = None
+
+
+class FlashcardExample(BaseModel):
+    """Example usage of a flashcard"""
+    korean: str
+    english: str
+    context: Optional[str] = None
+
+
+class BatchRequest(BaseModel):
+    """Request for batch processing"""
+    batch_id: str
+    items: List[VocabularyItem]
+    stage: str = "stage1"
+
+
+class BatchStatus(str, Enum):
+    """Batch processing status"""
+    PENDING = "pending"
+    PROCESSING = "processing"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    PARTIAL = "partial"
+
+
+class BatchResult(BaseModel):
+    """Result of batch processing"""
+    batch_id: str
+    status: BatchStatus
+    total_items: int
+    processed_items: int
+    failed_items: int
+    results: Dict[str, Any] = Field(default_factory=dict)
+    error: Optional[str] = None
+
+
+class ProcessingMetrics(BaseModel):
+    """Metrics collected during processing"""
+    total_requests: int = 0
+    successful_requests: int = 0
+    failed_requests: int = 0
+    avg_response_time_ms: float = 0.0
+    total_tokens_used: int = 0
+    cache_hit_rate: float = 0.0
+
+
+class ErrorInfo(BaseModel):
+    """Information about an error"""
+    error_type: str
+    error_message: str
+    timestamp: datetime
+    retry_after: Optional[int] = None
+
+
+class ValidationError(BaseModel):
+    """Validation error details"""
+    field: str
+    message: str
+    value: Optional[Any] = None

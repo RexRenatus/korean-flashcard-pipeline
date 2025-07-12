@@ -1,0 +1,212 @@
+version: '3.8'
+
+# Production-quality Docker Compose for personal use
+# Includes monitoring, backup, and optimization features
+
+x-common-variables: &common-variables
+  PYTHONPATH: /app/src/python
+  DATABASE_PATH: /app/data/pipeline.db
+  FLASHCARD_ENV: production
+  TZ: ${TZ:-UTC}
+
+x-common-volumes: &common-volumes
+  - ./data:/app/data
+  - ./logs:/app/logs
+  - ./cache:/app/cache
+  - ./.env.production:/app/.env:ro
+
+services:
+  # Main application service
+  flashcard-pipeline:
+    build:
+      context: .
+      dockerfile: Dockerfile.production
+      cache_from:
+        - korean-flashcard-pipeline:latest
+    image: korean-flashcard-pipeline:production
+    container_name: flashcard-pipeline
+    restart: unless-stopped
+    environment:
+      <<: *common-variables
+      FLASK_PORT: 8080
+    volumes:
+      <<: *common-volumes
+      # Additional volumes for production
+      - ./backup:/app/backup
+      - ./templates:/app/templates:ro
+      - ./exports:/app/exports
+    ports:
+      - "8080:8080"  # Future web interface
+    healthcheck:
+      test: ["CMD", "python", "-m", "flashcard_pipeline", "test", "connection"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - flashcard-network
+
+  # Redis cache for performance
+  redis:
+    image: redis:7-alpine
+    container_name: flashcard-redis
+    restart: unless-stopped
+    command: redis-server --save 20 1 --loglevel warning --requirepass ${REDIS_PASSWORD:-flashcard_redis_2024}
+    volumes:
+      - redis-data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - flashcard-network
+
+  # Monitoring dashboard
+  monitor:
+    image: korean-flashcard-pipeline:production
+    container_name: flashcard-monitor
+    restart: unless-stopped
+    environment:
+      <<: *common-variables
+    volumes:
+      <<: *common-volumes
+    command: python -m flashcard_pipeline monitor --refresh 5 --export /app/logs/metrics.jsonl
+    depends_on:
+      - flashcard-pipeline
+      - redis
+    networks:
+      - flashcard-network
+
+  # Automated backup service
+  backup:
+    image: korean-flashcard-pipeline:production
+    container_name: flashcard-backup
+    restart: unless-stopped
+    environment:
+      <<: *common-variables
+      BACKUP_SCHEDULE: "0 2 * * *"  # Daily at 2 AM
+    volumes:
+      <<: *common-volumes
+      - ./backup:/app/backup
+    command: >
+      sh -c "while true; do
+        echo 'Running backup...';
+        python -m flashcard_pipeline db backup /app/backup/pipeline_$(date +%Y%m%d_%H%M%S).db;
+        python -m flashcard_pipeline cache export /app/backup/cache_$(date +%Y%m%d_%H%M%S).tar.gz;
+        find /app/backup -name '*.db' -mtime +7 -delete;
+        find /app/backup -name '*.tar.gz' -mtime +7 -delete;
+        sleep 86400;
+      done"
+    depends_on:
+      - flashcard-pipeline
+    networks:
+      - flashcard-network
+
+  # Directory watcher for auto-processing
+  watcher:
+    image: korean-flashcard-pipeline:production
+    container_name: flashcard-watcher
+    restart: unless-stopped
+    environment:
+      <<: *common-variables
+      WATCH_DIRECTORY: /app/data/input
+      WATCH_PATTERN: "*.csv"
+      PROCESS_COMMAND: "process --concurrent 20 --output /app/data/output"
+    volumes:
+      <<: *common-volumes
+      - ./watch:/app/data/input
+      - ./processed:/app/data/output
+    command: python -m flashcard_pipeline watch /app/data/input --pattern "*.csv" --command "process --concurrent 20"
+    depends_on:
+      - flashcard-pipeline
+      - redis
+    networks:
+      - flashcard-network
+    profiles:
+      - automation
+
+  # Scheduled task runner
+  scheduler:
+    image: korean-flashcard-pipeline:production
+    container_name: flashcard-scheduler
+    restart: unless-stopped
+    environment:
+      <<: *common-variables
+    volumes:
+      <<: *common-volumes
+      - ./schedules:/app/schedules:ro
+    command: python scripts/scheduler.py
+    depends_on:
+      - flashcard-pipeline
+    networks:
+      - flashcard-network
+    profiles:
+      - automation
+
+  # Database maintenance
+  db-maintenance:
+    image: korean-flashcard-pipeline:production
+    container_name: flashcard-db-maintenance
+    restart: unless-stopped
+    environment:
+      <<: *common-variables
+    volumes:
+      <<: *common-volumes
+    command: >
+      sh -c "while true; do
+        echo 'Running database optimization...';
+        python -m flashcard_pipeline db repair;
+        python -m flashcard_pipeline optimize --component database;
+        sleep 604800;
+      done"
+    depends_on:
+      - flashcard-pipeline
+    networks:
+      - flashcard-network
+    profiles:
+      - maintenance
+
+  # API health monitor
+  health-monitor:
+    image: korean-flashcard-pipeline:production
+    container_name: flashcard-health
+    restart: unless-stopped
+    environment:
+      <<: *common-variables
+      HEALTHCHECK_INTERVAL: 60
+    volumes:
+      <<: *common-volumes
+    command: python scripts/health_monitor.py
+    depends_on:
+      - flashcard-pipeline
+    networks:
+      - flashcard-network
+    profiles:
+      - monitoring
+
+volumes:
+  redis-data:
+    driver: local
+
+networks:
+  flashcard-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

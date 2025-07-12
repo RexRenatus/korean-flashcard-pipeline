@@ -82,3 +82,28 @@ cache/
 !docs/10K_HSK_List.csv
 .env.test
 test_output.tsv
+
+# Generated/Temporary files
+coverage/
+time_reports/
+test_outputs/
+*.bak
+*.tmp
+*.temp
+
+# Data files (except reference data)
+data/production/
+data/cache/
+!data/reference/
+!data/test/
+
+# Build artifacts
+*.whl
+*.tar.gz
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Docker volumes
+docker/volumes/

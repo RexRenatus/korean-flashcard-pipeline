@@ -1,0 +1,11 @@
+{
+  "name": "Anki Default",
+  "description": "Default template for Anki exports",
+  "include_metadata": false,
+  "include_tags": true,
+  "custom_fields": {
+    "korean": "Front",
+    "english": "Back",
+    "tags": "Tags"
+  }
+}

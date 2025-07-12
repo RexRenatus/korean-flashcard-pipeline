@@ -424,8 +424,9 @@ class TestBatchProgress:
     
     def test_items_per_second(self):
         """Test processing rate calculation"""
+        from datetime import timedelta
         start_time = datetime.now()
-        end_time = start_time.replace(second=start_time.second + 10)
+        end_time = start_time + timedelta(seconds=10)
         
         progress = BatchProgress(
             batch_id="test-batch",

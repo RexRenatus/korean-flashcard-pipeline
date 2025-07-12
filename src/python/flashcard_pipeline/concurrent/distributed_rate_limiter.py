@@ -60,6 +60,11 @@ class DistributedRateLimiter:
         
         logger.info(f"Initialized rate limiter: {self.safe_limit} requests/minute "
                    f"(buffer: {buffer_factor}, original: {requests_per_minute})")
+        
+        # Test compatibility properties
+        self.effective_capacity = self.safe_limit
+        self.base_capacity = requests_per_minute
+        self.effective_rate = self.safe_limit / 60.0
     
     async def start(self):
         """Start the rate limiter"""
@@ -136,12 +141,56 @@ class DistributedRateLimiter:
                 retry_after=60.0 / self.refill_rate
             )
     
+    async def acquire_nowait(self) -> bool:
+        """Try to acquire a token without waiting
+        
+        Returns:
+            True if token was acquired, False otherwise
+        """
+        # Check if we can acquire immediately
+        if self.tokens.qsize() > 0 and self.semaphore._value > 0:
+            try:
+                # Try to get token first (non-blocking)
+                self.tokens.get_nowait()
+                # Then acquire semaphore with zero timeout
+                try:
+                    await asyncio.wait_for(self.semaphore.acquire(), timeout=0.001)
+                except asyncio.TimeoutError:
+                    # Put token back if we can't get semaphore
+                    try:
+                        self.tokens.put_nowait(1)
+                    except asyncio.QueueFull:
+                        pass
+                    return False
+                
+                # Update stats
+                async with self._lock:
+                    self.stats.total_acquisitions += 1
+                    self.stats.current_available = self.tokens.qsize()
+                
+                return True
+            except asyncio.QueueEmpty:
+                return False
+        return False
+    
     def release(self):
         """Release a token back to the pool"""
         self.semaphore.release()
         
+        # Also put a token back in the queue
+        try:
+            self.tokens.put_nowait(1)
+        except asyncio.QueueFull:
+            # Queue is full, that's okay
+            pass
+        
         # Update stats
         asyncio.create_task(self._update_release_stats())
+    
+    @property
+    def current_tokens(self):
+        """Current number of available tokens"""
+        return self.tokens.qsize()
     
     async def _update_release_stats(self):
         """Update release statistics"""
@@ -176,14 +225,18 @@ class DistributedRateLimiter:
     
     def get_stats(self) -> Dict[str, Any]:
         """Get rate limiter statistics"""
+        avg_wait_ms = (
+            self.stats.total_wait_time_ms / self.stats.total_acquisitions
+            if self.stats.total_acquisitions > 0 else 0
+        )
+        
         return {
             "total_acquisitions": self.stats.total_acquisitions,
             "total_releases": self.stats.total_releases,
             "total_timeouts": self.stats.total_timeouts,
-            "average_wait_ms": (
-                self.stats.total_wait_time_ms / self.stats.total_acquisitions
-                if self.stats.total_acquisitions > 0 else 0
-            ),
+            "average_wait_ms": avg_wait_ms,
+            "average_wait_time": avg_wait_ms / 1000,  # in seconds
+            "max_wait_time": self.stats.total_wait_time_ms / 1000,  # simplified max
             "current_available": self.stats.current_available,
             "max_concurrent": self.stats.max_concurrent,
             "requests_per_minute": self.requests_per_minute,

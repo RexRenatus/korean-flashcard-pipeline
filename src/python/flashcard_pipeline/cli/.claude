@@ -1,0 +1,80 @@
+# AI Assistant Guidance for CLI Module
+
+## Purpose
+This module provides the command-line interface for user interactions with the flashcard pipeline.
+
+## Key Principles
+
+1. **User-Friendly**: Clear messages, helpful errors
+2. **Progressive Disclosure**: Basic commands simple, advanced options available
+3. **Consistent**: Same patterns across all commands
+4. **Robust**: Handle edge cases and bad input
+
+## Command Structure
+
+```python
+@click.command()
+@click.option('--option', help='Description')
+@click.argument('input_file')
+def command_name(option, input_file):
+    """Command description for --help"""
+    try:
+        # Implementation
+    except Exception as e:
+        click.echo(f"Error: {e}", err=True)
+        raise click.Abort()
+```
+
+## Common Patterns
+
+### Progress Display
+```python
+with click.progressbar(items, label='Processing') as bar:
+    for item in bar:
+        process_item(item)
+```
+
+### Confirmation
+```python
+if not click.confirm('Are you sure?'):
+    click.echo('Aborted!')
+    return
+```
+
+### Output Formatting
+```python
+# Use Rich for tables
+from rich.table import Table
+from rich.console import Console
+
+console = Console()
+table = Table(title="Results")
+# ... build table
+console.print(table)
+```
+
+## Error Handling
+
+1. Catch specific exceptions
+2. Provide actionable error messages
+3. Use appropriate exit codes
+4. Log full errors for debugging
+
+## Testing CLI Commands
+
+```python
+from click.testing import CliRunner
+
+def test_command():
+    runner = CliRunner()
+    result = runner.invoke(command, ['arg1', '--option', 'value'])
+    assert result.exit_code == 0
+```
+
+## Do Not
+
+- Use print() instead of click.echo()
+- Show stack traces to users
+- Require complex input formats
+- Skip validation of user input
+- Make destructive operations without confirmation

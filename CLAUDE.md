@@ -2,6 +2,17 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## 🚀 IMPORTANT: Automated Rule Enforcement Active
+
+**Most rules in this file are now automatically enforced through hooks in `.claude/settings.json`**
+- Virtual environment activation is automatic
+- Security checks prevent dangerous operations  
+- Documentation reminders are provided
+- Test coverage is monitored
+- Code quality is validated
+
+**For day-to-day work, refer to `CLAUDE_STREAMLINED.md` for essential guidance without the rule details.**
+
 ## 🎯 Project Overview
 
 **Project**: Korean Language Flashcard Pipeline  
@@ -92,15 +103,24 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 🔄 Current Phase Status
 
-**Phase 1: Design & Architecture** 🚧 IN PROGRESS
-- ⏳ Project structure setup
-- ⏳ API architecture documentation review
-- ⏳ Database schema reorganization
-- ⏳ System design documentation
-- ⏳ Integration specifications
-- ⏳ Pipeline design documentation
+**Phase 1: Design & Architecture** ✅ COMPLETE
+**Phase 2: Core Implementation (Rust)** ✅ COMPLETE
+**Phase 3: API Client (Python)** ✅ COMPLETE
+**Phase 4: Pipeline Integration** ✅ COMPLETE
+**Phase 5: Testing & Validation** ✅ COMPLETE
+**Phase 6: Production Implementation** ✅ COMPLETE
 
-**Next: Phase 2: Core Implementation (Rust)**
+**Project Status: PRODUCTION READY (v1.0.0)**
+
+### Final Test Results:
+- ✅ Phase 1 Tests: 100% pass rate (67/67 tests)
+- ✅ Phase 2 Tests: 100% pass rate (85/85 tests)
+- ✅ Integration Testing: Complete
+- ✅ Performance Testing: Complete
+- ✅ End-to-End Testing: Complete
+- ✅ Overall Test Coverage: 90%+
+
+**All phases complete. The project is ready for production deployment.**
 
 ## 🚀 Quick Commands
 
@@ -317,8 +337,108 @@ cat planning/PHASE_ROADMAP.md # Review phase roadmap
     <rule id="readme-9" priority="critical">Ensure all internal links in README remain valid after file moves or renames</rule>
     <rule id="readme-10" priority="mandatory">Add troubleshooting items when users report common issues</rule>
   </rule-set>
+
+  <rule-set name="Efficient Subagent Utilization">
+    <rule id="subagent-1" priority="critical">When facing multiple independent tasks, ALWAYS launch concurrent subagents to maximize efficiency</rule>
+    <rule id="subagent-2" priority="critical">For file searches spanning multiple directories, use separate subagents to search in parallel</rule>
+    <rule id="subagent-3" priority="mandatory">When analyzing different components or modules, assign each to a dedicated subagent</rule>
+    <rule id="subagent-4" priority="critical">For test fixing across multiple test files, launch parallel subagents for each file</rule>
+    <rule id="subagent-5" priority="mandatory">Document gathering tasks must use subagents to read multiple files concurrently</rule>
+    <rule id="subagent-6" priority="critical">Each subagent must have a clear, specific, and bounded task description</rule>
+    <rule id="subagent-7" priority="mandatory">Subagent tasks must include expected output format and success criteria</rule>
+    <rule id="subagent-8" priority="critical">Never use subagents for tasks requiring sequential operations or shared state</rule>
+    <rule id="subagent-9" priority="mandatory">Aggregate and synthesize subagent results before presenting to user</rule>
+    <rule id="subagent-10" priority="critical">For research tasks, use subagents to explore different aspects simultaneously</rule>
+    <rule id="subagent-11" priority="mandatory">When fixing similar issues across multiple files, create a template fix for subagents</rule>
+    <rule id="subagent-12" priority="critical">Monitor subagent progress and reassign tasks if any subagent fails</rule>
+    <rule id="subagent-13" priority="mandatory">Use subagents for parallel validation and testing of independent components</rule>
+    <rule id="subagent-14" priority="critical">Batch similar operations together for subagent processing</rule>
+    <rule id="subagent-15" priority="mandatory">Document subagent usage patterns in PROJECT_JOURNAL.md for future reference</rule>
+  </rule-set>
+
+  <rule-set name="Subagent Task Patterns">
+    <rule id="pattern-1" priority="critical">File Search Pattern: Use subagents to search for patterns/keywords across different directories</rule>
+    <rule id="pattern-2" priority="critical">Test Fix Pattern: Assign each failing test class to a separate subagent for parallel fixing</rule>
+    <rule id="pattern-3" priority="mandatory">Documentation Update Pattern: Use subagents to update related docs simultaneously</rule>
+    <rule id="pattern-4" priority="critical">Code Analysis Pattern: Analyze different modules/packages with dedicated subagents</rule>
+    <rule id="pattern-5" priority="mandatory">Dependency Check Pattern: Verify dependencies across multiple files using parallel subagents</rule>
+    <rule id="pattern-6" priority="critical">Refactoring Pattern: Apply similar refactoring across multiple files with subagents</rule>
+    <rule id="pattern-7" priority="mandatory">Validation Pattern: Run different validation checks concurrently with subagents</rule>
+    <rule id="pattern-8" priority="critical">Data Collection Pattern: Gather metrics/stats from multiple sources in parallel</rule>
+    <rule id="pattern-9" priority="mandatory">Error Investigation Pattern: Investigate different error types with specialized subagents</rule>
+    <rule id="pattern-10" priority="critical">Performance Analysis Pattern: Profile different components simultaneously</rule>
+  </rule-set>
 </master-rules>
 
 ---
 
-**Remember**: When adding significant documentation, IMMEDIATELY update the references section above!
+## 🔧 Automated Hook System
+
+**As of 2025-01-09, most rules are enforced automatically via `.claude/settings.json` hooks:**
+
+### What's Automated:
+1. **Virtual Environment**: Python commands auto-activate venv
+2. **Security**: Blocks hardcoded credentials and dangerous commands
+3. **Testing**: Enforces test creation, coverage targets, and best practices
+4. **Documentation**: Reminds about updates to tracking files
+5. **Code Quality**: Auto-runs linters and type checkers
+6. **Git Operations**: Status checks and commit reminders
+7. **Session Management**: Cleanup and summary generation
+
+### What's NOT Automated:
+1. Strategic thinking and architecture decisions
+2. Complex problem-solving approaches
+3. Creative solutions and optimizations
+4. Business logic implementation
+5. User experience design
+
+### Testing Rules Now Enforced:
+- **test-1**: New code requires tests (reminder on file creation)
+- **test-2**: Test data validation (checks during test execution)
+- **test-3**: CI pipeline integration (test must pass)
+- **test-4**: Coverage targets (85% minimum reminder)
+- **test-5**: Regression tests for bug fixes
+- **test-6**: Separate test logs (handled automatically)
+
+**For streamlined daily use, see `CLAUDE_STREAMLINED.md`**
+
+---
+
+## 🔄 Phase Continuation System
+
+**As of 2025-01-09, intelligent phase continuation is automated via hooks:**
+
+### Automatic Features:
+1. **Session Start**: Shows current phase status and next priority tasks
+2. **Task Tracking**: Monitors MASTER_TODO.md for uncompleted tasks
+3. **Context Restoration**: Displays where last session ended from PROJECT_JOURNAL.md
+4. **Priority Suggestions**: Recommends next task based on dependencies
+5. **Progress Reports**: Comprehensive status overview at session start
+6. **State Persistence**: Saves session state for cross-session continuity
+
+### How It Works:
+- **Start Hook**: Runs `phase_continuation_manager.py report` to show current status
+- **Continue Hook**: Restores session state and suggests next actions
+- **Stop Hook**: Saves current task and next steps for future sessions
+
+### Manual Commands:
+```bash
+# Get full continuation report
+python scripts/phase_continuation_manager.py report
+
+# Check current status
+python scripts/phase_continuation_manager.py status
+
+# Get next task suggestion
+python scripts/phase_continuation_manager.py suggest
+
+# Save session state
+python scripts/phase_continuation_manager.py save "current task" "next step 1" "next step 2"
+
+# Load previous session state
+python scripts/phase_continuation_manager.py load
+```
+
+---
+
+**Remember**: The hooks handle routine enforcement. Focus on quality code and strategic decisions!

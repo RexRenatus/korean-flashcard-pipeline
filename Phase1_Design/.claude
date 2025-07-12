@@ -1,0 +1,40 @@
+# AI Assistant Guidance for Phase1_Design
+
+When working with files in this directory:
+
+## Context
+This directory contains the foundational design documents created during Phase 1. These are **reference documents** that should generally not be modified unless documenting significant architectural changes.
+
+## Guidelines
+
+### Reading and Understanding
+- Always read these documents to understand the original design intent
+- Pay special attention to the rationale behind design decisions
+- Note any constraints or limitations documented
+
+### Referencing Design
+- When implementing features, cite the relevant design document
+- If implementation differs from design, document why
+- Keep track of design-to-implementation mappings
+
+### Updating Design Docs
+- Only update if there's a fundamental design change
+- Add "Updated: [date]" markers for any modifications
+- Document the reason for the change
+- Consider creating a separate "Design Evolution" document instead of modifying originals
+
+### Common Tasks
+1. **Finding Design Rationale**: Check SYSTEM_DESIGN.md first, then specific component designs
+2. **API Implementation**: Start with API_SPECIFICATIONS.md for endpoint details
+3. **Database Work**: DATABASE_DESIGN.md has the complete schema
+4. **Integration Issues**: INTEGRATION_DESIGN.md covers external API patterns
+
+## Important Notes
+- These documents represent Phase 1 thinking and may not reflect current implementation
+- Always cross-reference with actual implementation in src/ directories
+- Design documents use pseudocode and conceptual models, not production code
+
+## Do Not
+- Modify these files unless documenting major architectural changes
+- Treat pseudocode as implementation code
+- Assume all design decisions were implemented exactly as specified

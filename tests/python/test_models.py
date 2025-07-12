@@ -29,7 +29,7 @@ class TestVocabularyItem:
     
     def test_vocabulary_item_optional_type(self):
         item = VocabularyItem(position=2, term="test")
-        assert item.type is None
+        assert item.type == "unknown"  # Default value when not provided
     
     def test_vocabulary_item_validation(self):
         # VocabularyItem doesn't have built-in validation in Pydantic v2

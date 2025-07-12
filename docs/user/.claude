@@ -1,0 +1,209 @@
+# AI Assistant Guidance for User Documentation
+
+## Purpose
+Help end users successfully use the flashcard pipeline without needing technical knowledge.
+
+## Writing Principles
+
+### Clear and Simple
+- Avoid jargon
+- Define technical terms
+- Use examples liberally
+- Show don't tell
+
+### Task-Focused
+- Organize by what users want to do
+- Provide step-by-step instructions
+- Include expected outcomes
+- Cover common variations
+
+### Visual Aids
+- Use screenshots for complex UIs
+- Include command output examples
+- Show file format examples
+- Add diagrams for workflows
+
+## Document Types
+
+### Quick Start Guide
+```markdown
+# Quick Start Guide
+
+## Installation (5 minutes)
+1. Install Python 3.8+
+2. Run: `pip install flashcard-pipeline`
+3. Verify: `flashcard-cli --version`
+
+## First Flashcard (2 minutes)
+1. Create `test.csv`:
+   \`\`\`csv
+   korean,english
+   안녕하세요,Hello
+   \`\`\`
+2. Run: `flashcard-cli process test.csv`
+3. Find results in `output/`
+
+## Next Steps
+- Process more vocabulary
+- Configure settings
+- Export to Anki
+```
+
+### Feature Guides
+```markdown
+# Feature Name Guide
+
+## What is [Feature]?
+Brief explanation in plain language.
+
+## When to Use It
+- Scenario 1
+- Scenario 2
+
+## How to Use It
+
+### Basic Usage
+1. Step one with screenshot
+2. Step two with example
+3. Expected result
+
+### Advanced Options
+- Option 1: What it does
+- Option 2: When to use
+
+## Examples
+
+### Example 1: Common Use Case
+\`\`\`bash
+command --option value
+\`\`\`
+Output:
+\`\`\`
+Expected output here
+\`\`\`
+
+## Troubleshooting
+- Problem: Solution
+- Problem: Solution
+```
+
+### FAQ Structure
+```markdown
+# Frequently Asked Questions
+
+## Getting Started
+**Q: How do I install the pipeline?**
+A: Follow these steps...
+
+**Q: What file formats are supported?**
+A: The pipeline supports...
+
+## Common Issues
+**Q: Why is processing slow?**
+A: Several factors can affect speed...
+
+## Advanced Usage
+**Q: Can I process multiple files?**
+A: Yes, use batch processing...
+```
+
+## Common User Tasks
+
+### Installation Problems
+```markdown
+## Installation Troubleshooting
+
+### "pip not found"
+**Problem**: Command not recognized
+**Solution**: 
+1. Ensure Python is installed
+2. Try: `python -m pip install...`
+
+### Permission Errors
+**Problem**: Access denied
+**Solution**:
+- Windows: Run as administrator
+- Mac/Linux: Use `sudo pip install...`
+```
+
+### Usage Examples
+Always include:
+- The exact command
+- Expected output
+- What to do next
+- Common variations
+
+## Error Message Documentation
+```markdown
+## Error: API_KEY_NOT_FOUND
+
+### What it means
+The system cannot find your OpenRouter API key.
+
+### How to fix
+1. Get API key from [OpenRouter](https://openrouter.ai)
+2. Set environment variable:
+   - Windows: `set OPENROUTER_API_KEY=your-key`
+   - Mac/Linux: `export OPENROUTER_API_KEY=your-key`
+3. Or add to config file:
+   \`\`\`yaml
+   api:
+     key: your-key-here
+   \`\`\`
+
+### Still having issues?
+- Check key is valid
+- Ensure no extra spaces
+- Try command with `--api-key` flag
+```
+
+## Best Practices
+
+### Use Real Examples
+```markdown
+❌ Bad: "Process your file"
+✅ Good: "Process your vocabulary file: `flashcard-cli process korean_vocab.csv`"
+```
+
+### Show Expected Output
+```markdown
+After running the command, you'll see:
+\`\`\`
+Processing vocabulary... ████████████████ 100%
+✓ Processed 50 items
+✓ Generated 50 flashcards
+✓ Saved to output/flashcards_2024-01-09.json
+\`\`\`
+```
+
+### Provide Context
+```markdown
+## Why Enable Caching?
+Caching saves your API responses locally, which:
+- Reduces API costs by 70%+
+- Speeds up reprocessing
+- Works offline for cached items
+```
+
+## Do Not
+
+- Use technical implementation details
+- Assume command-line knowledge
+- Skip error scenarios
+- Use internal jargon
+- Forget Windows users
+- Make users guess
+
+## User Psychology
+
+### Reduce Anxiety
+- Start with success (quick wins)
+- Provide safety nets (backups)
+- Explain what's happening
+- Give time estimates
+
+### Build Confidence
+- Progressive complexity
+- Celebrate successes
+- Provide next steps
+- Link to more info

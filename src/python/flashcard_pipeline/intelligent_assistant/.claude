@@ -1,0 +1,138 @@
+# AI Assistant Guidance for Intelligent Assistant Module
+
+## Meta Note
+This is an AI assistant module helping to build better AI interactions. Be mindful of the recursive nature!
+
+## Core Philosophy
+Enhance, don't replace. The goal is to make AI responses better, not to add complexity.
+
+## Prompt Engineering Principles
+
+### 1. Clarity Over Cleverness
+```python
+# Good
+prompt = "Create a flashcard for the Korean word '사랑' (love). Include pronunciation and an example sentence."
+
+# Bad
+prompt = "Generate comprehensive linguistic analysis for the morphophonological characteristics of '사랑'"
+```
+
+### 2. Context Is King
+```python
+# Always include relevant context
+context = {
+    "user_level": "intermediate",
+    "previous_terms": ["좋아하다", "사랑하다"],
+    "learning_goal": "expressing emotions",
+    "common_errors": ["사랑 vs 사람 confusion"]
+}
+```
+
+### 3. Examples Guide Quality
+```python
+# Include examples of good output
+example_flashcard = {
+    "term": "안녕하세요",
+    "meaning": "Hello (formal)",
+    "pronunciation": "an-nyeong-ha-se-yo",
+    "example": "안녕하세요, 만나서 반갑습니다.",
+    "example_translation": "Hello, nice to meet you."
+}
+```
+
+## Quality Scoring Guidelines
+
+### Scoring Dimensions
+1. **Completeness** - All required fields present?
+2. **Accuracy** - Information correct?
+3. **Clarity** - Easy to understand?
+4. **Relevance** - Appropriate for level?
+5. **Engagement** - Memorable/interesting?
+
+### Score Calculation
+```python
+def calculate_quality_score(flashcard):
+    scores = {
+        "completeness": check_required_fields(flashcard),
+        "accuracy": validate_information(flashcard),
+        "clarity": assess_readability(flashcard),
+        "relevance": check_difficulty_match(flashcard),
+        "engagement": evaluate_memorability(flashcard)
+    }
+    
+    weights = {
+        "completeness": 0.3,
+        "accuracy": 0.3,
+        "clarity": 0.2,
+        "relevance": 0.1,
+        "engagement": 0.1
+    }
+    
+    return sum(scores[k] * weights[k] for k in scores)
+```
+
+## Context Management Best Practices
+
+### What to Track
+- User performance history
+- Common error patterns
+- Preferred learning style
+- Time of day patterns
+- Topic preferences
+
+### What NOT to Track
+- Personally identifiable information
+- Unrelated conversation
+- System prompts
+- Error stack traces
+
+## Common Patterns
+
+### Prompt Enhancement Flow
+```python
+async def enhance_prompt(base_prompt, context):
+    # 1. Analyze base prompt
+    intent = analyze_intent(base_prompt)
+    
+    # 2. Add relevant context
+    enhanced = add_context(base_prompt, context)
+    
+    # 3. Include quality guidelines
+    enhanced = add_quality_guidelines(enhanced, intent)
+    
+    # 4. Add examples if helpful
+    if should_include_examples(intent):
+        enhanced = add_examples(enhanced)
+    
+    # 5. Optimize token usage
+    enhanced = optimize_tokens(enhanced)
+    
+    return enhanced
+```
+
+### Adaptive Difficulty
+```python
+def adjust_difficulty(current_level, performance):
+    if performance > 0.9:
+        return min(current_level + 1, 10)
+    elif performance < 0.6:
+        return max(current_level - 1, 1)
+    return current_level
+```
+
+## Testing Strategies
+
+1. **Prompt Variations** - Test with different phrasings
+2. **Context Scenarios** - Various user profiles
+3. **Edge Cases** - Minimal/maximal inputs
+4. **Language Mix** - Korean/English balance
+5. **Quality Thresholds** - Boundary testing
+
+## Do Not
+
+- Over-engineer prompts
+- Store sensitive user data
+- Make assumptions about user level
+- Ignore token limits
+- Cache personal information
+- Use biased training examples

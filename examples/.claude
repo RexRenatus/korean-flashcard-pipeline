@@ -1,0 +1,253 @@
+# AI Assistant Guidance for Examples Directory
+
+## Purpose
+Provide working examples that users can run, modify, and learn from. These should be the "copy-paste to get started" resource.
+
+## Key Principles
+
+### 1. Examples Must Work
+- Test every example
+- Include all imports
+- Provide sample data
+- Document requirements
+
+### 2. Start Simple
+- Basic example first
+- Build complexity gradually
+- Explain each addition
+- Show common patterns
+
+### 3. Real-World Focus
+- Solve actual problems
+- Show best practices
+- Include error handling
+- Demonstrate performance tips
+
+## Creating Examples
+
+### Example Structure
+```python
+#!/usr/bin/env python3
+"""
+One-line description of what this example shows.
+
+This example demonstrates:
+- Feature 1
+- Feature 2
+- Best practice X
+
+Requirements:
+- flashcard-pipeline >= 1.0
+- Python 3.8+
+
+Usage:
+    python example_name.py
+"""
+
+import asyncio
+from flashcard_pipeline import Pipeline
+
+# Configuration (make obvious what needs changing)
+API_KEY = "your-api-key-here"  # Get from https://openrouter.ai
+
+async def main():
+    """Main example logic."""
+    # Step 1: Setup (with comments)
+    pipeline = Pipeline(api_key=API_KEY)
+    
+    # Step 2: Prepare data
+    items = [...]
+    
+    # Step 3: Process
+    try:
+        results = await pipeline.process(items)
+        print(f"Success! Created {len(results)} flashcards")
+    except Exception as e:
+        print(f"Error: {e}")
+        return
+    
+    # Step 4: Show results
+    for result in results[:3]:  # Show first 3
+        print(f"- {result.korean}: {result.english}")
+
+if __name__ == "__main__":
+    # Run the example
+    asyncio.run(main())
+```
+
+## Example Categories
+
+### 1. Getting Started
+```
+examples/
+├── 01_hello_world.py        # Simplest possible example
+├── 02_process_csv.py        # Process a CSV file
+├── 03_save_results.py       # Save to different formats
+└── 04_error_handling.py     # Handle common errors
+```
+
+### 2. Features
+```
+examples/features/
+├── caching.py               # Use caching effectively
+├── concurrent.py            # Concurrent processing
+├── custom_prompts.py        # Customize AI prompts
+└── monitoring.py            # Track progress
+```
+
+### 3. Integration
+```
+examples/integration/
+├── with_anki.py            # Export to Anki
+├── with_database.py        # Direct database usage
+├── with_web_app.py         # Flask/FastAPI integration
+└── with_cli.py             # CLI automation
+```
+
+## Sample Data Guidelines
+
+### Input Files
+```csv
+# examples/input/sample_vocab.csv
+# Simple vocabulary for testing
+# Includes various difficulty levels and types
+
+korean,english,type,difficulty
+안녕하세요,Hello,phrase,1
+책,book,noun,1
+읽다,to read,verb,2
+도서관,library,noun,2
+공부하다,to study,verb,2
+```
+
+### Expected Output
+```json
+// examples/output/sample_output.json
+// What users should expect to see
+{
+    "status": "success",
+    "flashcards": [...],
+    "statistics": {
+        "total": 5,
+        "cached": 2,
+        "generated": 3
+    }
+}
+```
+
+## Common Patterns to Show
+
+### Error Handling
+```python
+# Good error handling example
+try:
+    results = await pipeline.process(items)
+except RateLimitError:
+    print("Rate limited. Waiting 60 seconds...")
+    await asyncio.sleep(60)
+    results = await pipeline.process(items)
+except APIError as e:
+    print(f"API error: {e}")
+    # Show recovery strategy
+except Exception as e:
+    print(f"Unexpected error: {e}")
+    # Show logging/debugging
+```
+
+### Configuration
+```python
+# Show different config methods
+# Method 1: Direct
+pipeline = Pipeline(api_key="key", cache=True)
+
+# Method 2: Config file
+config = load_config("config.yaml")
+pipeline = Pipeline(**config)
+
+# Method 3: Environment
+pipeline = Pipeline()  # Uses env vars
+```
+
+### Performance
+```python
+# Show performance optimization
+# Basic (slow)
+for item in items:
+    result = await process(item)
+
+# Optimized (fast)
+results = await pipeline.process_batch(
+    items,
+    max_concurrent=10,
+    show_progress=True
+)
+```
+
+## Documentation Standards
+
+### Each Example Needs
+1. **Docstring** explaining purpose
+2. **Requirements** section
+3. **Usage** instructions
+4. **Expected output** sample
+5. **Common issues** section
+
+### README Entry
+```markdown
+### Example Name
+**Purpose**: What this demonstrates
+**Difficulty**: Beginner/Intermediate/Advanced
+**Features**: List of features shown
+**Run**: `python examples/example_name.py`
+```
+
+## Testing Examples
+
+### Checklist
+- [ ] Runs without errors
+- [ ] Clear output/results
+- [ ] Handles missing API key
+- [ ] Includes sample data
+- [ ] Documents requirements
+
+### Automated Testing
+```python
+# tests/test_examples.py
+def test_all_examples_run():
+    """Ensure all examples execute."""
+    for example in Path("examples").glob("*.py"):
+        result = subprocess.run(
+            [sys.executable, example],
+            env={**os.environ, "API_KEY": "test"},
+            capture_output=True
+        )
+        assert result.returncode == 0
+```
+
+## Do Not
+
+- Include real API keys
+- Require complex setup
+- Use outdated patterns
+- Skip error handling
+- Forget imports
+- Make assumptions
+
+## Maintenance
+
+### Regular Tasks
+- Test examples monthly
+- Update for API changes
+- Add new feature examples
+- Remove deprecated patterns
+- Gather user feedback
+
+### Version Compatibility
+```python
+# Show version checking
+import flashcard_pipeline
+
+if flashcard_pipeline.__version__ < "1.0":
+    print("Please upgrade: pip install -U flashcard-pipeline")
+    exit(1)
+```

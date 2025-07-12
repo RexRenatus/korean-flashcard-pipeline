@@ -1,0 +1,79 @@
+{
+  "global": {
+    "max_workers": 5,
+    "default_timeout": 5
+  },
+  "hooks": {
+    "security_check": {
+      "command": "python scripts/validators/security_check.py",
+      "parallel": true,
+      "timeout": 3,
+      "file_patterns": [
+        "*"
+      ],
+      "exclude_patterns": []
+    },
+    "syntax_check": {
+      "command": "python scripts/validators/syntax_check.py",
+      "parallel": true,
+      "timeout": 2,
+      "file_patterns": [
+        "*.py",
+        "*.js",
+        "*.json",
+        "*.yml",
+        "*.yaml",
+        "*.md",
+        "*.sh"
+      ],
+      "exclude_patterns": []
+    },
+    "solid_check": {
+      "command": "python scripts/solid_enforcer_v2.py",
+      "parallel": true,
+      "timeout": 5,
+      "file_patterns": [
+        "*.py"
+      ],
+      "exclude_patterns": [
+        "test_*.py",
+        "*_test.py",
+        "*/tests/*"
+      ]
+    },
+    "doc_search": {
+      "command": "python scripts/mcp_ref_hooks/unified_documentation.py",
+      "parallel": true,
+      "timeout": 8,
+      "file_patterns": [
+        "*"
+      ]
+    }
+  },
+  "operations": {
+    "validate": {
+      "hooks": [
+        "security_check",
+        "syntax_check",
+        "solid_check"
+      ]
+    },
+    "documentation": {
+      "hooks": [
+        "doc_search"
+      ]
+    },
+    "error": {
+      "hooks": [
+        "security_check"
+      ]
+    }
+  },
+  "dependencies": {
+    "solid_check": {
+      "depends_on": [
+        "syntax_check"
+      ]
+    }
+  }
+}

@@ -1,0 +1,186 @@
+# AI Assistant Guidance for Architecture Documentation
+
+## Purpose
+Technical documentation explaining system design, component relationships, and architectural decisions.
+
+## Audience
+- Technical architects
+- Senior developers  
+- System integrators
+- Future maintainers
+
+## Key Documents to Maintain
+
+### API_ARCHITECTURE.md
+- Overall system design
+- Component boundaries
+- Communication patterns
+- Integration points
+
+### DATABASE_SCHEMA.md
+- Table structures
+- Relationships (foreign keys)
+- Indexes and performance
+- Migration strategies
+
+### CLI_ARCHITECTURE.md
+- Command structure
+- Plugin system
+- Configuration management
+- Extension points
+
+## Writing Architecture Docs
+
+### Structure Template
+```markdown
+# Component Name
+
+## Overview
+High-level purpose and role in system.
+
+## Design Principles
+- Principle 1: Explanation
+- Principle 2: Explanation
+
+## Architecture
+### Components
+Description of major components.
+
+### Interactions
+How components communicate.
+
+### Data Flow
+How data moves through the system.
+
+## Technical Decisions
+### Decision 1: Choice
+**Rationale**: Why this choice was made.
+**Trade-offs**: What we gave up.
+**Alternatives**: What else was considered.
+
+## Diagrams
+[Include mermaid diagrams]
+
+## Performance Considerations
+- Bottlenecks
+- Optimization strategies
+- Scaling limits
+
+## Security Considerations
+- Trust boundaries
+- Authentication/Authorization
+- Data protection
+
+## Future Considerations
+What might need to change.
+```
+
+## Diagram Best Practices
+
+### System Overview
+```mermaid
+graph TB
+    subgraph "Frontend"
+        CLI[CLI Interface]
+        WEB[Web Interface]
+    end
+    
+    subgraph "Core"
+        PIPE[Pipeline Engine]
+        CACHE[Cache Layer]
+    end
+    
+    subgraph "External"
+        API[OpenRouter API]
+        DB[(Database)]
+    end
+    
+    CLI --> PIPE
+    WEB --> PIPE
+    PIPE --> CACHE
+    CACHE --> DB
+    PIPE --> API
+```
+
+### Data Flow
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant C as CLI
+    participant P as Pipeline
+    participant A as API
+    participant D as Database
+    
+    U->>C: Process vocabulary
+    C->>P: Start pipeline
+    P->>D: Check cache
+    alt Cache miss
+        P->>A: Generate flashcard
+        A-->>P: Return result
+        P->>D: Store in cache
+    end
+    P-->>C: Return flashcard
+    C-->>U: Display result
+```
+
+## Common Updates
+
+### Adding New Component
+1. Update system overview diagram
+2. Document component responsibilities  
+3. Define interfaces/APIs
+4. Explain integration points
+5. Add to data flow if applicable
+
+### Changing Architecture
+1. Document current state
+2. Explain motivation for change
+3. Show transition plan
+4. Update all affected diagrams
+5. Note migration requirements
+
+### Performance Optimization
+1. Identify bottleneck
+2. Document baseline metrics
+3. Explain optimization approach
+4. Show expected improvements
+5. Define success criteria
+
+## Architecture Review Checklist
+
+- [ ] Diagrams match implementation
+- [ ] All components documented
+- [ ] Integration points clear
+- [ ] Security boundaries defined
+- [ ] Performance limits stated
+- [ ] Scaling strategy included
+- [ ] Decision rationale captured
+
+## Do Not
+
+- Document implementation details (that's for code)
+- Include specific code snippets
+- Make architecture dependent on tools
+- Forget about error paths
+- Ignore security implications
+- Skip performance considerations
+
+## Tips
+
+### Keep It High-Level
+Focus on the "what" and "why", not the "how".
+
+### Use Standard Notation
+- UML for class relationships
+- Sequence diagrams for flows
+- Component diagrams for structure
+
+### Version Your Architecture
+- Date major changes
+- Keep history of decisions
+- Document evolution
+
+### Think About Readers
+- New team members need orientation
+- Integrators need interfaces
+- Operators need deployment info

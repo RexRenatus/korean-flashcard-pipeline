@@ -1,0 +1,37 @@
+# AI Assistant Guidance for src Directory
+
+## Overview
+This is the main source code directory. Choose the appropriate language subdirectory based on the task.
+
+## Quick Navigation
+
+- **Python work**: Always work in `/src/python/`
+- **Rust work**: Work in `/src/rust/` (currently planned, not implemented)
+
+## Key Principles
+
+1. **Language Boundaries**: Keep Python and Rust code strictly separated
+2. **No Cross-Imports**: Never import across language boundaries directly
+3. **Interface Through**: Database, files, or HTTP APIs only
+
+## Common Tasks
+
+### Adding New Features
+1. Determine if it's I/O bound (Python) or CPU bound (Rust)
+2. Navigate to the appropriate language directory
+3. Follow language-specific conventions
+
+### Debugging Issues
+- Start with the language where the error occurs
+- Check integration points if crossing language boundaries
+- Review database schemas for data flow issues
+
+## Important Notes
+- Currently, only Python implementation is active
+- Rust directories exist for future optimization phases
+- Don't modify Rust structure without architectural review
+
+## Do Not
+- Mix Python and Rust code in the same directory
+- Create language-agnostic code at this level
+- Add configuration files here (use project root)

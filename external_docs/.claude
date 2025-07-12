@@ -1,0 +1,170 @@
+# AI Assistant Guidance for External Documentation
+
+## Purpose
+Reference documentation from external sources (APIs, services) that we integrate with. These are NOT our docs.
+
+## Key Principles
+
+### 1. Reference Only
+- These are copies for development reference
+- Always verify against official sources
+- May be outdated
+
+### 2. Copyright Respect
+- Don't modify content
+- Include source attribution
+- Don't redistribute
+
+### 3. Security First
+- Never store credentials
+- Remove example API keys
+- Sanitize sensitive data
+
+## When Working Here
+
+### Adding Documentation
+```markdown
+<!-- At the top of each file -->
+# [Title]
+Source: https://official-url.com/docs
+Downloaded: 2024-01-09
+Version: API v2.1
+Purpose: Reference for [specific feature]
+
+---
+[Original content below]
+```
+
+### Organizing Files
+```
+external_docs/
+├── anthropic/
+│   ├── api_reference_20240109.md
+│   ├── error_codes_20240109.md
+│   └── best_practices_20240109.md
+├── openrouter/
+│   ├── authentication_20240109.md
+│   ├── models_list_20240109.md
+│   └── rate_limits_20240109.md
+```
+
+## Common Tasks
+
+### Checking API Changes
+1. Compare with official docs
+2. Note differences
+3. Update our integration code
+4. Document changes
+
+### Finding Information
+```bash
+# Search for rate limits
+grep -r "rate limit" external_docs/
+
+# Find authentication info
+find external_docs -name "*auth*"
+
+# Check latest files
+ls -la external_docs/*/ | grep 2024
+```
+
+## What to Extract
+
+### API Documentation
+- Endpoint URLs
+- Request/response formats
+- Authentication methods
+- Error codes
+- Rate limits
+
+### Integration Guides
+- Setup steps
+- Best practices
+- Common pitfalls
+- Example code
+
+### Model Information
+- Available models
+- Capabilities
+- Limitations
+- Pricing
+
+## What NOT to Store
+
+### Avoid
+- Full website dumps
+- Images/videos
+- Marketing content
+- User data
+- Internal docs
+
+### Remove
+- API keys in examples
+- Personal information
+- Tracking codes
+- Analytics scripts
+
+## Maintenance
+
+### Regular Updates
+```bash
+# Check age of docs
+find external_docs -name "*.md" -mtime +30
+
+# Archive old versions
+mkdir -p external_docs/archive/2023
+mv external_docs/*_2023*.md external_docs/archive/2023/
+```
+
+### Version Tracking
+```markdown
+<!-- In each file -->
+## Version History
+- 2024-01-09: Updated for API v2.1
+- 2023-12-01: Initial version for API v2.0
+```
+
+## Security Checks
+
+### Before Committing
+1. Search for API keys
+   ```bash
+   grep -r "api_key\|secret\|token" external_docs/
+   ```
+
+2. Check for emails
+   ```bash
+   grep -r "@.*\." external_docs/
+   ```
+
+3. Remove examples
+   ```bash
+   # Replace with placeholders
+   sed -i 's/sk-[a-zA-Z0-9]*/YOUR_API_KEY/g' file.md
+   ```
+
+## Do Not
+
+- Edit external content (except security)
+- Store binary files
+- Keep outdated docs forever
+- Trust blindly (always test)
+- Share proprietary information
+- Ignore copyright notices
+
+## Quick Reference
+
+### Is This External Doc Needed?
+- ✅ API we actively use
+- ✅ Helps solve integration issues
+- ✅ Not available elsewhere
+- ❌ Just "nice to have"
+- ❌ Easily found online
+- ❌ Rarely referenced
+
+### Cleanup Checklist
+- [ ] Remove old versions
+- [ ] Check for credentials
+- [ ] Verify source links
+- [ ] Update README
+- [ ] Note major changes

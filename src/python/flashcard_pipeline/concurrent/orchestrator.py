@@ -5,11 +5,11 @@ from typing import List, Optional, Dict, Any, Tuple
 from datetime import datetime
 import logging
 
-from ..models import VocabularyItem, Stage1Response, Stage2Response
-from ..api_client import OpenRouterClient
+from ..core.models import VocabularyItem, Stage1Response, Stage2Response
+from ..api import OpenRouterClient
 from ..cache import CacheService
-from ..circuit_breaker import CircuitBreaker
-from ..exceptions import PipelineError, ApiError, RateLimitError
+from ..api import CircuitBreaker
+from ..core.exceptions import PipelineError, ApiError, RateLimitError
 from .ordered_collector import OrderedResultsCollector, ProcessingResult
 from .distributed_rate_limiter import DistributedRateLimiter
 from .progress_tracker import ConcurrentProgressTracker

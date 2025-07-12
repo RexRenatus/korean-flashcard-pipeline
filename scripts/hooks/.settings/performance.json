@@ -1,0 +1,30 @@
+{
+  "window_size": 100,
+  "thresholds": {
+    "execution_time_p95": 10.0,
+    "execution_time_p99": 15.0,
+    "error_rate": 0.1,
+    "timeout_rate": 0.05
+  },
+  "cache": {
+    "ttl": {
+      "default": 300,
+      "by_hook": {
+        "security_check": 600,
+        "syntax_check": 300,
+        "solid_check": 900,
+        "doc_search": 1800
+      }
+    }
+  },
+  "notifications": {
+    "enabled": true,
+    "channels": [
+      "console"
+    ],
+    "thresholds": {
+      "slow_execution": 10.0,
+      "high_error_rate": 0.2
+    }
+  }
+}

@@ -1,0 +1,151 @@
+# AI Assistant Guidance for Monitoring Module
+
+## Core Principle
+Monitor for actionable insights, not vanity metrics. Every metric should answer "So what?"
+
+## Key Monitoring Areas
+
+### 1. The Four Golden Signals (Google SRE)
+- **Latency** - How long requests take
+- **Traffic** - How many requests
+- **Errors** - How many fail
+- **Saturation** - How full the system is
+
+### 2. Business Metrics
+- Flashcards generated successfully
+- User engagement rates
+- Feature adoption
+- Cost per flashcard
+
+## Implementation Patterns
+
+### Health Check Pattern
+```python
+async def check_component(name, check_func, timeout=5):
+    try:
+        start = time.time()
+        async with asyncio.timeout(timeout):
+            result = await check_func()
+        latency = (time.time() - start) * 1000
+        
+        return {
+            "status": "healthy" if result else "unhealthy",
+            "latency_ms": latency,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    except asyncio.TimeoutError:
+        return {
+            "status": "unhealthy",
+            "error": "timeout",
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    except Exception as e:
+        return {
+            "status": "unhealthy",
+            "error": str(e),
+            "timestamp": datetime.utcnow().isoformat()
+        }
+```
+
+### Metrics Collection Pattern
+```python
+class MetricsCollector:
+    def __init__(self):
+        self.metrics = defaultdict(list)
+        self.lock = asyncio.Lock()
+    
+    async def record(self, metric_name, value, tags=None):
+        async with self.lock:
+            self.metrics[metric_name].append({
+                "value": value,
+                "timestamp": time.time(),
+                "tags": tags or {}
+            })
+            
+            # Cleanup old metrics
+            cutoff = time.time() - 3600  # 1 hour
+            self.metrics[metric_name] = [
+                m for m in self.metrics[metric_name]
+                if m["timestamp"] > cutoff
+            ]
+```
+
+### Alert Pattern
+```python
+class Alert:
+    def __init__(self, name, condition, cooldown=300):
+        self.name = name
+        self.condition = condition
+        self.cooldown = cooldown
+        self.last_fired = None
+    
+    async def check(self, metrics):
+        if self.condition(metrics):
+            now = time.time()
+            if not self.last_fired or now - self.last_fired > self.cooldown:
+                self.last_fired = now
+                return True
+        return False
+```
+
+## Common Monitoring Mistakes
+
+1. **Too Many Metrics** - Can't see forest for trees
+2. **No Context** - Raw numbers without baseline
+3. **Alert Fatigue** - Too many non-actionable alerts
+4. **Missing User Impact** - System metrics without user perspective
+5. **No Remediation** - Alerts without runbooks
+
+## Effective Dashboards
+
+### Layout Principles
+```
++------------------+------------------+
+|   System Health  |   Current Load   |
+|   (Traffic Light)|   (Gauge)        |
++------------------+------------------+
+|   Error Rate     |   Response Time  |
+|   (Time Series)  |   (Histogram)    |
++------------------+------------------+
+|   Recent Alerts  |   Top Errors     |
+|   (Table)        |   (List)         |
++------------------+------------------+
+```
+
+### Visualization Choice
+- **Traffic Light** - Overall health
+- **Gauge** - Current vs capacity
+- **Time Series** - Trends
+- **Histogram** - Distribution
+- **Table** - Detailed data
+
+## Performance Considerations
+
+1. **Sampling** - Don't record every event
+2. **Aggregation** - Pre-compute summaries
+3. **Retention** - Delete old data
+4. **Async Collection** - Don't block main flow
+5. **Batch Sending** - Group metric updates
+
+## Testing Monitoring
+
+```python
+@pytest.mark.asyncio
+async def test_health_check_timeout():
+    async def slow_check():
+        await asyncio.sleep(10)
+        return True
+    
+    result = await check_component("slow", slow_check, timeout=1)
+    assert result["status"] == "unhealthy"
+    assert result["error"] == "timeout"
+```
+
+## Do Not
+
+- Block application flow for metrics
+- Store high-cardinality data
+- Alert on normal variations
+- Ignore monitoring overhead
+- Mix metrics with business logic
+- Forget about metric expiry

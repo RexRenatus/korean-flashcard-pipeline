@@ -1,0 +1,129 @@
+# Docker ignore file for Korean Flashcard Pipeline
+
+# Version control
+.git/
+.github/
+.gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+pip-log.txt
+pip-delete-this-directory.txt
+.pytest_cache/
+.coverage
+*.cover
+.hypothesis/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.ruff_cache/
+
+# Rust
+target/
+Cargo.lock
+**/*.rs.bk
+
+# Environment files (except examples)
+.env
+.env.local
+.env.development
+.env.test
+.env.production.local
+*.env
+!.env.example
+!.env.production
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs and databases
+*.log
+logs/
+*.db
+*.sqlite
+*.sqlite3
+pipeline.db
+!migrations/
+
+# Cache and temporary files
+cache/
+.cache/
+*.tmp
+*.temp
+tmp/
+temp/
+
+# Build and distribution
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Documentation (keep docs for reference)
+!docs/
+
+# Test files and reports
+tests/
+test_*.py
+*_test.py
+htmlcov/
+.tox/
+.coverage.*
+coverage.xml
+*.cover
+test-results/
+pytest_cache/
+
+# Data files (except examples)
+data/
+!data/.gitkeep
+processed/
+exports/
+backup/
+*.csv
+*.tsv
+*.json
+!examples/
+!templates/
+
+# Project specific
+.timekeeper/
+Phase1_Design/
+Open_Router_Documentation_*/
+Anthropic_Documentation_*/
+external_docs/
+planning/
+migration_report.txt
+test_report_*.txt
+processing_results_*.json
+time_reports/
+*.skip
+
+# Scripts that shouldn't be in production image
+scripts/review/
+pre_task_review.sh
+post_task_review.sh
+run_phase1_tests.py
+run_phase2_tests.py
+run_tests_mock.py
+
+# Keep only necessary files
+!src/
+!migrations/
+!scripts/
+!templates/
+!requirements.txt
+!Cargo.toml

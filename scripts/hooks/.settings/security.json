@@ -1,0 +1,42 @@
+{
+  "enabled": true,
+  "patterns": {
+    "hardcoded_secrets": [
+      "(api[_-]?key|apikey|secret[_-]?key|password|passwd|pwd)\\\\s*=\\\\s*[\\\"'][^\\\"']+[\\\"']",
+      "(token|auth|credential)\\\\s*=\\\\s*[\\\"'][^\\\"']+[\\\"']"
+    ],
+    "unsafe_commands": [
+      "eval\\\\s*\\\\(",
+      "exec\\\\s*\\\\(",
+      "\\\\$\\\\(",
+      "subprocess\\\\.call\\\\s*\\\\(.*shell\\\\s*=\\\\s*True"
+    ],
+    "sensitive_paths": [
+      "/etc/passwd",
+      "~/.ssh/",
+      "~/.aws/credentials"
+    ]
+  },
+  "file_checks": {
+    "max_file_size_mb": 100,
+    "allowed_extensions": [
+      "py",
+      "js",
+      "json",
+      "yml",
+      "yaml",
+      "md",
+      "txt",
+      "sh",
+      "rs",
+      "toml"
+    ],
+    "blocked_extensions": [
+      "exe",
+      "dll",
+      "so",
+      "dylib",
+      "bin"
+    ]
+  }
+}

@@ -1,0 +1,71 @@
+# Simple production Dockerfile for Korean Flashcard Pipeline
+# Python-only version optimized for immediate use
+
+FROM python:3.11-slim
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    sqlite3 \
+    curl \
+    ca-certificates \
+    tini \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Create non-root user
+RUN groupadd -r flashcard && useradd -r -g flashcard flashcard
+
+# Set working directory
+WORKDIR /app
+
+# Copy requirements first for better caching
+COPY requirements.txt .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application source
+COPY --chown=flashcard:flashcard src/python ./src/python
+COPY --chown=flashcard:flashcard migrations ./migrations
+COPY --chown=flashcard:flashcard scripts ./scripts
+COPY --chown=flashcard:flashcard templates ./templates
+
+# Copy setup files for proper CLI installation
+COPY --chown=flashcard:flashcard setup.py ./
+COPY --chown=flashcard:flashcard pyproject.toml ./
+COPY --chown=flashcard:flashcard README.md ./
+
+# Copy example environment file
+COPY --chown=flashcard:flashcard .env.example .env.example
+
+# Install the package in editable mode for CLI commands
+RUN pip install -e .
+
+# Create necessary directories with proper permissions
+RUN mkdir -p logs data/input data/output data/export cache .cache/flashcards && \
+    chown -R flashcard:flashcard /app && \
+    chmod -R 755 /app/scripts
+
+# Set environment variables
+ENV PYTHONPATH=/app/src/python \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    DATABASE_PATH=/app/data/pipeline.db \
+    LOG_FILE=/app/logs/pipeline.log \
+    CACHE_DIR=/app/cache
+
+# Create volume mount points
+VOLUME ["/app/data", "/app/logs", "/app/cache"]
+
+# Switch to non-root user
+USER flashcard
+
+# Health check using the new doctor command
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD flashcard-pipeline doctor || exit 1
+
+# Use tini as init system
+ENTRYPOINT ["/usr/bin/tini", "--"]
+
+# Default command - show help using installed CLI
+CMD ["flashcard-pipeline", "--help"]

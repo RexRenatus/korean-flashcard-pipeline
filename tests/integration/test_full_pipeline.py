@@ -1,619 +1,463 @@
-"""Comprehensive integration tests for the full pipeline"""
-import pytest
-import asyncio
-import os
-import tempfile
-import csv
-import json
-import sqlite3
-from pathlib import Path
-from unittest.mock import patch, AsyncMock, MagicMock
-import time
+"""Full pipeline integration tests for the Korean Flashcard Pipeline.
 
-from flashcard_pipeline import (
-    PipelineOrchestrator,
+This module tests the complete end-to-end processing flow,
+including database integration, API interactions, and export functionality.
+"""
+
+import asyncio
+import json
+import tempfile
+from datetime import datetime
+from pathlib import Path
+from typing import List, Dict, Any
+from unittest.mock import Mock, patch, AsyncMock
+
+import pytest
+import aiosqlite
+from httpx import Response
+
+from flashcard_pipeline.models import (
     VocabularyItem,
     Stage1Response,
     Stage2Response,
-    FlashcardRow,
-    Comparison,
-    OpenRouterClient,
-    CacheService,
-    AdaptiveRateLimiter,
-    CircuitBreaker
+    Flashcard,
+    BatchStatus,
 )
-from flashcard_pipeline.exceptions import (
-    RateLimitError,
-    ApiError,
-    CircuitBreakerOpen
+from flashcard_pipeline.api.client import OpenRouterClient
+from flashcard_pipeline.database.manager import DatabaseManager
+from flashcard_pipeline.pipeline.orchestrator import PipelineOrchestrator
+from flashcard_pipeline.cache import CacheService
+from tests.fixtures.factory import (
+    VocabularyFactory,
+    Stage1ResponseFactory,
+    Stage2ResponseFactory,
+    FlashcardFactory,
+    TestScenarioFactory,
 )
-
-
-@pytest.fixture
-def test_db_path():
-    """Create a test database"""
-    with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as f:
-        db_path = f.name
-    yield db_path
-    os.unlink(db_path)
-
-
-@pytest.fixture
-def test_cache_dir():
-    """Create a test cache directory"""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        yield Path(tmpdir)
-
-
-@pytest.fixture
-def large_vocabulary_list():
-    """Create a large vocabulary list for testing"""
-    items = []
-    categories = ['noun', 'verb', 'adjective', 'adverb', 'expression']
-    
-    for i in range(100):
-        items.append({
-            'position': i + 1,
-            'term': f'단어{i}',
-            'type': categories[i % len(categories)]
-        })
-    
-    return items
-
-
-@pytest.fixture
-def mock_api_responses():
-    """Create mock API responses for testing"""
-    def create_stage1_response(item):
-        return Stage1Response(
-            term_number=item['position'],
-            term=item['term'],
-            ipa=f"[{item['term']}]",
-            pos=item['type'],
-            primary_meaning=f"Meaning of {item['term']}",
-            other_meanings="Other meanings",
-            metaphor="Like something",
-            metaphor_noun="thing",
-            metaphor_action="action",
-            suggested_location="place",
-            anchor_object="object",
-            anchor_sensory="sense",
-            explanation="Explanation",
-            usage_context="Context",
-            comparison=Comparison(
-                similar_to=["similar"],
-                different_from=["different"],
-                commonly_confused_with=[]
-            ),
-            homonyms=[],
-            korean_keywords=["keyword"]
-        )
-    
-    def create_stage2_tsv(item, stage1):
-        return f"{item['position']}\t{item['term']}\t{stage1.ipa}\t{stage1.pos}\tFront\tSecondary\tExample\tBack\tBack secondary\tBack example\tMnemonic\tbeginner\tcommon\ttag1,tag2\tNotes"
-    
-    return create_stage1_response, create_stage2_tsv
 
 
 class TestFullPipelineIntegration:
-    """Test the complete pipeline with all components"""
+    """Test the complete pipeline from input to export."""
+    
+    @pytest.fixture
+    async def temp_db(self):
+        """Create a temporary database for testing."""
+        with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as tmp:
+            db_path = tmp.name
+        
+        # Initialize database
+        async with aiosqlite.connect(db_path) as db:
+            # Create tables
+            await db.execute('''
+                CREATE TABLE vocabulary_items (
+                    id INTEGER PRIMARY KEY,
+                    korean TEXT NOT NULL,
+                    english TEXT NOT NULL,
+                    nuance_level TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            
+            await db.execute('''
+                CREATE TABLE flashcards (
+                    id TEXT PRIMARY KEY,
+                    vocabulary_item_id INTEGER,
+                    difficulty TEXT NOT NULL,
+                    card_type TEXT NOT NULL,
+                    front_data TEXT NOT NULL,
+                    back_data TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (vocabulary_item_id) REFERENCES vocabulary_items(id)
+                )
+            ''')
+            
+            await db.execute('''
+                CREATE TABLE stage1_responses (
+                    id INTEGER PRIMARY KEY,
+                    vocabulary_item_id INTEGER,
+                    response_data TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (vocabulary_item_id) REFERENCES vocabulary_items(id)
+                )
+            ''')
+            
+            await db.execute('''
+                CREATE TABLE stage2_responses (
+                    id INTEGER PRIMARY KEY,
+                    vocabulary_item_id INTEGER,
+                    response_data TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (vocabulary_item_id) REFERENCES vocabulary_items(id)
+                )
+            ''')
+            
+            await db.commit()
+        
+        yield db_path
+        
+        # Cleanup
+        Path(db_path).unlink(missing_ok=True)
+    
+    @pytest.fixture
+    async def pipeline_components(self, temp_db):
+        """Create pipeline components with test configuration."""
+        config = {
+            'api_key': 'test-api-key',
+            'database_path': temp_db,
+            'cache_enabled': True,
+            'batch_size': 5,
+            'max_retries': 2,
+        }
+        
+        api_client = OpenRouterClient(api_key=config['api_key'])
+        db_manager = DatabaseManager(db_path=config['database_path'])
+        cache = CacheService(enabled=config['cache_enabled'])
+        
+        orchestrator = PipelineOrchestrator(
+            api_client=api_client,
+            db_manager=db_manager,
+            cache=cache,
+            config=config
+        )
+        
+        return {
+            'api_client': api_client,
+            'db_manager': db_manager,
+            'cache': cache,
+            'orchestrator': orchestrator,
+            'config': config
+        }
     
     @pytest.mark.asyncio
-    async def test_complete_pipeline_flow(self, test_cache_dir, large_vocabulary_list, mock_api_responses):
-        """Test processing a large batch through the entire pipeline"""
+    async def test_end_to_end_processing_flow(self, pipeline_components):
+        """Test complete processing from vocabulary input to flashcard export."""
+        orchestrator = pipeline_components['orchestrator']
+        db_manager = pipeline_components['db_manager']
         
-        create_stage1, create_stage2_tsv = mock_api_responses
+        # Create test scenario
+        scenario = TestScenarioFactory.create_full_pipeline_scenario()
+        vocab_items = scenario['vocabulary_items']
         
-        # Create CSV file
-        csv_file = test_cache_dir / "input.csv"
-        with open(csv_file, 'w', newline='', encoding='utf-8') as f:
-            writer = csv.DictWriter(f, fieldnames=['position', 'term', 'type'])
-            writer.writeheader()
-            writer.writerows(large_vocabulary_list)
-        
-        # Mock API client
-        with patch('flashcard_pipeline.api_client.OpenRouterClient') as MockClient:
-            mock_client = AsyncMock()
-            MockClient.return_value = mock_client
+        # Mock API responses
+        with patch.object(orchestrator.api_client, 'process_stage1') as mock_stage1, \
+             patch.object(orchestrator.api_client, 'process_stage2') as mock_stage2:
             
-            # Set up mock responses
-            async def mock_stage1(vocab_item):
-                await asyncio.sleep(0.01)  # Simulate API delay
-                item_dict = {
-                    'position': vocab_item.position,
-                    'term': vocab_item.term,
-                    'type': vocab_item.type
-                }
-                return create_stage1(item_dict), {'total_tokens': 100, 'estimated_cost': 0.001}
+            # Setup mock responses
+            mock_stage1.side_effect = [
+                AsyncMock(return_value=response)()
+                for response in scenario['stage1_responses']
+            ]
             
-            async def mock_stage2(vocab_item, stage1_response):
-                await asyncio.sleep(0.01)  # Simulate API delay
-                item_dict = {
-                    'position': vocab_item.position,
-                    'term': vocab_item.term,
-                    'type': vocab_item.type
-                }
-                tsv = create_stage2_tsv(item_dict, stage1_response)
-                return Stage2Response.from_tsv(tsv), {'total_tokens': 150, 'estimated_cost': 0.0015}
+            mock_stage2.side_effect = [
+                AsyncMock(return_value=response)()
+                for response in scenario['stage2_responses']
+            ]
             
-            mock_client.process_stage1.side_effect = mock_stage1
-            mock_client.process_stage2.side_effect = mock_stage2
-            
-            # Create orchestrator with realistic settings
-            orchestrator = PipelineOrchestrator(
-                cache_dir=str(test_cache_dir),
-                rate_limit=600,  # 600 requests per minute
-                max_concurrent=10,
-                circuit_breaker_threshold=5,
-                circuit_breaker_timeout=30
-            )
-            
-            # Process the batch
-            output_file = test_cache_dir / "output.tsv"
-            start_time = time.time()
-            
-            results = await orchestrator.process_csv(
-                str(csv_file),
-                str(output_file),
-                progress_callback=lambda current, total: print(f"Progress: {current}/{total}")
-            )
-            
-            end_time = time.time()
-            processing_time = end_time - start_time
+            # Process vocabulary items
+            result = await orchestrator.process_batch(vocab_items)
             
             # Verify results
-            assert len(results) == 100
-            assert output_file.exists()
+            assert result.status == BatchStatus.COMPLETED
+            assert result.processed_items == len(vocab_items)
+            assert result.failed_items == 0
             
-            # Check output file
-            with open(output_file, 'r', encoding='utf-8') as f:
-                lines = f.readlines()
-                assert len(lines) == 101  # Header + 100 data rows
-            
-            # Verify processing time is reasonable
-            assert processing_time < 30  # Should complete within 30 seconds
-            
-            # Check cache was used
-            cache_stats = orchestrator.cache_service.get_stats()
-            assert cache_stats['total_entries'] > 0
-    
-    @pytest.mark.asyncio
-    async def test_pipeline_resume_capability(self, test_cache_dir, test_db_path):
-        """Test that the pipeline can resume from a checkpoint"""
-        
-        # Create a batch that will be interrupted
-        items = [VocabularyItem(position=i, term=f"word{i}", type="noun") for i in range(20)]
-        
-        with patch('flashcard_pipeline.api_client.OpenRouterClient') as MockClient:
-            mock_client = AsyncMock()
-            MockClient.return_value = mock_client
-            
-            call_count = 0
-            
-            async def mock_stage1_with_failure(vocab_item):
-                nonlocal call_count
-                call_count += 1
+            # Verify database entries
+            async with db_manager.get_connection() as conn:
+                # Check vocabulary items
+                cursor = await conn.execute(
+                    "SELECT COUNT(*) FROM vocabulary_items"
+                )
+                count = await cursor.fetchone()
+                assert count[0] == len(vocab_items)
                 
-                # Fail after 10 items
-                if call_count == 10:
-                    raise Exception("Simulated failure")
+                # Check flashcards
+                cursor = await conn.execute(
+                    "SELECT COUNT(*) FROM flashcards"
+                )
+                count = await cursor.fetchone()
+                assert count[0] > 0  # Should have flashcards created
+    
+    @pytest.mark.asyncio
+    async def test_database_integration(self, pipeline_components):
+        """Test database operations throughout the pipeline."""
+        db_manager = pipeline_components['db_manager']
+        
+        # Create and save vocabulary items
+        vocab_items = VocabularyFactory.create_batch(3)
+        
+        async with db_manager.get_connection() as conn:
+            for item in vocab_items:
+                await conn.execute(
+                    '''INSERT INTO vocabulary_items (korean, english, nuance_level)
+                       VALUES (?, ?, ?)''',
+                    (item.korean, item.english, item.nuance_level.value)
+                )
+            await conn.commit()
+            
+            # Verify insertion
+            cursor = await conn.execute(
+                "SELECT korean, english, nuance_level FROM vocabulary_items"
+            )
+            rows = await cursor.fetchall()
+            assert len(rows) == len(vocab_items)
+            
+            # Create and save flashcards
+            for i, item in enumerate(vocab_items):
+                flashcards = FlashcardFactory.create_set(vocabulary_item_id=i+1)
                 
-                await asyncio.sleep(0.01)
-                return Stage1Response(
-                    term_number=vocab_item.position,
-                    term=vocab_item.term,
-                    ipa=f"[{vocab_item.term}]",
-                    pos="noun",
-                    primary_meaning="meaning",
-                    other_meanings="",
-                    metaphor="",
-                    metaphor_noun="",
-                    metaphor_action="",
-                    suggested_location="",
-                    anchor_object="",
-                    anchor_sensory="",
-                    explanation="",
-                    comparison=Comparison(similar_to=[], different_from=[], commonly_confused_with=[]),
-                    homonyms=[],
-                    korean_keywords=[]
-                ), {'total_tokens': 50, 'estimated_cost': 0.0005}
+                for card in flashcards:
+                    await conn.execute(
+                        '''INSERT INTO flashcards 
+                           (id, vocabulary_item_id, difficulty, card_type, front_data, back_data)
+                           VALUES (?, ?, ?, ?, ?, ?)''',
+                        (
+                            card.id,
+                            card.vocabulary_item_id,
+                            card.difficulty.value,
+                            card.card_type,
+                            json.dumps(card.front.model_dump()),
+                            json.dumps(card.back.model_dump())
+                        )
+                    )
+            await conn.commit()
             
-            mock_client.process_stage1.side_effect = mock_stage1_with_failure
-            mock_client.process_stage2.return_value = (
-                Stage2Response.from_tsv("1\tterm\t[ipa]\tnoun\tFront\t\t\tBack\t\t\t\tbeginner\tcommon\t\t"),
-                {'total_tokens': 50, 'estimated_cost': 0.0005}
+            # Verify flashcard creation
+            cursor = await conn.execute(
+                "SELECT COUNT(*) FROM flashcards"
             )
-            
-            orchestrator = PipelineOrchestrator(
-                cache_dir=str(test_cache_dir),
-                db_path=test_db_path
-            )
-            
-            # First attempt - should fail
-            with pytest.raises(Exception) as exc_info:
-                await orchestrator.process_batch(items, batch_id=1)
-            
-            assert "Simulated failure" in str(exc_info.value)
-            
-            # Check checkpoint was saved
-            checkpoint = orchestrator.get_checkpoint(batch_id=1)
-            assert checkpoint is not None
-            assert checkpoint < 20  # Some items processed
-            
-            # Reset mock for resume
-            call_count = 0
-            mock_client.process_stage1.side_effect = None
-            mock_client.process_stage1.return_value = (
-                Stage1Response(
-                    term_number=1,
-                    term="test",
-                    ipa="[test]",
-                    pos="noun",
-                    primary_meaning="meaning",
-                    other_meanings="",
-                    metaphor="",
-                    metaphor_noun="",
-                    metaphor_action="",
-                    suggested_location="",
-                    anchor_object="",
-                    anchor_sensory="",
-                    explanation="",
-                    comparison=Comparison(similar_to=[], different_from=[], commonly_confused_with=[]),
-                    homonyms=[],
-                    korean_keywords=[]
-                ),
-                {'total_tokens': 50, 'estimated_cost': 0.0005}
-            )
-            
-            # Resume processing
-            resumed_results = await orchestrator.resume_batch(batch_id=1)
-            
-            # Should complete remaining items
-            assert len(resumed_results) > 0
+            count = await cursor.fetchone()
+            assert count[0] == len(vocab_items) * 3  # 3 cards per item
     
     @pytest.mark.asyncio
-    async def test_rate_limiting_behavior(self, test_cache_dir):
-        """Test that rate limiting works correctly under load"""
+    async def test_api_integration_with_mocks(self, pipeline_components):
+        """Test API integration with proper mocking."""
+        api_client = pipeline_components['api_client']
         
-        with patch('flashcard_pipeline.api_client.OpenRouterClient') as MockClient:
-            mock_client = AsyncMock()
-            MockClient.return_value = mock_client
-            
-            # Track API call times
-            call_times = []
-            
-            async def track_calls(vocab_item):
-                call_times.append(time.time())
-                return Stage1Response(
-                    term_number=vocab_item.position,
-                    term=vocab_item.term,
-                    ipa="[test]",
-                    pos="noun",
-                    primary_meaning="test",
-                    other_meanings="",
-                    metaphor="",
-                    metaphor_noun="",
-                    metaphor_action="",
-                    suggested_location="",
-                    anchor_object="",
-                    anchor_sensory="",
-                    explanation="",
-                    comparison=Comparison(similar_to=[], different_from=[], commonly_confused_with=[]),
-                    homonyms=[],
-                    korean_keywords=[]
-                ), {'total_tokens': 50, 'estimated_cost': 0.0005}
-            
-            mock_client.process_stage1.side_effect = track_calls
-            mock_client.process_stage2.return_value = (
-                Stage2Response.from_tsv("1\tterm\t[ipa]\tnoun\tFront\t\t\tBack\t\t\t\tbeginner\tcommon\t\t"),
-                {'total_tokens': 50, 'estimated_cost': 0.0005}
+        # Create test data
+        vocab_item = VocabularyFactory.create()
+        stage1_response = Stage1ResponseFactory.create_detailed()
+        stage2_response = Stage2ResponseFactory.create()
+        
+        # Mock HTTP client
+        with patch.object(api_client._client, 'post') as mock_post:
+            # Mock Stage 1 response
+            mock_post.return_value = Response(
+                status_code=200,
+                json=stage1_response.model_dump()
             )
             
-            # Create orchestrator with low rate limit
-            orchestrator = PipelineOrchestrator(
-                cache_dir=str(test_cache_dir),
-                rate_limit=60,  # 60 requests per minute = 1 per second
-                max_concurrent=1  # Force sequential processing
+            # Test Stage 1
+            result1 = await api_client.process_stage1(vocab_item)
+            assert result1.korean_word == stage1_response.korean_word
+            assert len(result1.nuances) == len(stage1_response.nuances)
+            
+            # Mock Stage 2 response
+            mock_post.return_value = Response(
+                status_code=200,
+                json=stage2_response.model_dump()
             )
             
-            # Process multiple items
-            items = [VocabularyItem(position=i, term=f"rate_test_{i}") for i in range(5)]
-            
-            start_time = time.time()
-            await asyncio.gather(*[orchestrator.process_item(item) for item in items])
-            total_time = time.time() - start_time
-            
-            # With 5 items (10 API calls) at 1/sec, should take ~10 seconds
-            assert total_time >= 8  # Allow some tolerance
-            
-            # Check call spacing
-            for i in range(1, len(call_times)):
-                time_diff = call_times[i] - call_times[i-1]
-                assert time_diff >= 0.9  # Should be ~1 second apart
+            # Test Stage 2
+            result2 = await api_client.process_stage2(vocab_item, result1)
+            assert result2.total_cards_generated == stage2_response.total_cards_generated
+            assert len(result2.flashcards) == len(stage2_response.flashcards)
     
     @pytest.mark.asyncio
-    async def test_circuit_breaker_behavior(self, test_cache_dir):
-        """Test circuit breaker opens and closes correctly"""
+    async def test_export_format_verification(self, pipeline_components):
+        """Test that exported data matches expected formats."""
+        orchestrator = pipeline_components['orchestrator']
         
-        with patch('flashcard_pipeline.api_client.OpenRouterClient') as MockClient:
-            mock_client = AsyncMock()
-            MockClient.return_value = mock_client
-            
-            failure_count = 0
-            
-            async def failing_api_call(vocab_item):
-                nonlocal failure_count
-                failure_count += 1
-                raise ApiError("API Error", status_code=500, response_body="Server error")
-            
-            mock_client.process_stage1.side_effect = failing_api_call
-            
-            orchestrator = PipelineOrchestrator(
-                cache_dir=str(test_cache_dir),
-                circuit_breaker_threshold=3,
-                circuit_breaker_timeout=1  # 1 second timeout for testing
-            )
-            
-            # Make requests until circuit opens
-            items = [VocabularyItem(position=i, term=f"cb_test_{i}") for i in range(5)]
-            
-            for i, item in enumerate(items):
-                try:
-                    await orchestrator.process_item(item)
-                except (ApiError, CircuitBreakerOpen):
-                    pass
-                
-                if i >= 2:  # After 3 failures
-                    # Circuit should be open
-                    assert orchestrator.circuit_breaker.state == "open"
-                    break
-            
-            # Further requests should fail immediately
-            with pytest.raises(CircuitBreakerOpen):
-                await orchestrator.process_item(items[4])
-            
-            # Wait for timeout
-            await asyncio.sleep(1.5)
-            
-            # Reset mock to succeed
-            mock_client.process_stage1.side_effect = None
-            mock_client.process_stage1.return_value = (
-                Stage1Response(
-                    term_number=1,
-                    term="test",
-                    ipa="[test]",
-                    pos="noun",
-                    primary_meaning="test",
-                    other_meanings="",
-                    metaphor="",
-                    metaphor_noun="",
-                    metaphor_action="",
-                    suggested_location="",
-                    anchor_object="",
-                    anchor_sensory="",
-                    explanation="",
-                    comparison=Comparison(similar_to=[], different_from=[], commonly_confused_with=[]),
-                    homonyms=[],
-                    korean_keywords=[]
-                ),
-                {'total_tokens': 50, 'estimated_cost': 0.0005}
-            )
-            
-            # Circuit should be half-open, next request should succeed
-            result = await orchestrator.process_item(items[4])
-            assert result is not None
-            assert orchestrator.circuit_breaker.state == "closed"
+        # Create test flashcards
+        flashcards = [
+            FlashcardFactory.create() for _ in range(5)
+        ]
+        
+        # Test JSON export
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as tmp:
+            export_path = tmp.name
+        
+        await orchestrator.export_flashcards(flashcards, export_path, format='json')
+        
+        # Verify JSON structure
+        with open(export_path, 'r') as f:
+            exported_data = json.load(f)
+        
+        assert 'flashcards' in exported_data
+        assert 'metadata' in exported_data
+        assert len(exported_data['flashcards']) == len(flashcards)
+        
+        # Verify flashcard structure
+        for exported_card in exported_data['flashcards']:
+            assert 'id' in exported_card
+            assert 'front' in exported_card
+            assert 'back' in exported_card
+            assert 'difficulty' in exported_card
+            assert 'card_type' in exported_card
+        
+        # Cleanup
+        Path(export_path).unlink(missing_ok=True)
     
     @pytest.mark.asyncio
-    async def test_cache_persistence(self, test_cache_dir):
-        """Test that cache persists across orchestrator instances"""
+    async def test_error_scenario_handling(self, pipeline_components):
+        """Test how the pipeline handles various error scenarios."""
+        orchestrator = pipeline_components['orchestrator']
         
-        item = VocabularyItem(position=1, term="캐시테스트", type="noun")
+        # Create error scenario
+        scenario = TestScenarioFactory.create_error_scenario()
+        vocab_items = scenario['vocabulary_items']
         
-        with patch('flashcard_pipeline.api_client.OpenRouterClient') as MockClient:
-            mock_client = AsyncMock()
-            MockClient.return_value = mock_client
+        # Mock API to raise errors
+        with patch.object(orchestrator.api_client, 'process_stage1') as mock_stage1:
+            # First call succeeds, others fail
+            mock_stage1.side_effect = [
+                AsyncMock(return_value=Stage1ResponseFactory.create())(),
+                Exception("API Error"),
+                Exception("Network Error")
+            ]
             
-            mock_client.process_stage1.return_value = (
-                Stage1Response(
-                    term_number=1,
-                    term="캐시테스트",
-                    ipa="[cache-test]",
-                    pos="noun",
-                    primary_meaning="cache test",
-                    other_meanings="",
-                    metaphor="",
-                    metaphor_noun="",
-                    metaphor_action="",
-                    suggested_location="",
-                    anchor_object="",
-                    anchor_sensory="",
-                    explanation="",
-                    comparison=Comparison(similar_to=[], different_from=[], commonly_confused_with=[]),
-                    homonyms=[],
-                    korean_keywords=[]
-                ),
-                {'total_tokens': 50, 'estimated_cost': 0.0005}
-            )
+            # Process batch
+            result = await orchestrator.process_batch(vocab_items)
             
-            mock_client.process_stage2.return_value = (
-                Stage2Response.from_tsv("1\t캐시테스트\t[cache-test]\tnoun\tCache Test\t\t\tCache Test\t\t\t\tbeginner\tcommon\t\t"),
-                {'total_tokens': 50, 'estimated_cost': 0.0005}
-            )
+            # Verify partial success handling
+            assert result.status == BatchStatus.PARTIAL_SUCCESS
+            assert result.processed_items == 1
+            assert result.failed_items == 2
+            assert len(result.errors) == 2
+    
+    @pytest.mark.asyncio
+    async def test_concurrent_processing(self, pipeline_components):
+        """Test concurrent processing of multiple batches."""
+        orchestrator = pipeline_components['orchestrator']
+        
+        # Create multiple batches
+        batches = [
+            VocabularyFactory.create_batch(5) for _ in range(3)
+        ]
+        
+        # Mock API responses
+        with patch.object(orchestrator.api_client, 'process_stage1') as mock_stage1, \
+             patch.object(orchestrator.api_client, 'process_stage2') as mock_stage2:
             
-            # First orchestrator instance
-            orchestrator1 = PipelineOrchestrator(cache_dir=str(test_cache_dir))
-            result1 = await orchestrator1.process_item(item)
+            mock_stage1.return_value = AsyncMock(
+                return_value=Stage1ResponseFactory.create()
+            )()
             
-            # Should have made API calls
-            assert mock_client.process_stage1.call_count == 1
-            assert mock_client.process_stage2.call_count == 1
+            mock_stage2.return_value = AsyncMock(
+                return_value=Stage2ResponseFactory.create()
+            )()
             
-            # Create new orchestrator instance with same cache dir
-            orchestrator2 = PipelineOrchestrator(cache_dir=str(test_cache_dir))
+            # Process batches concurrently
+            tasks = [
+                orchestrator.process_batch(batch)
+                for batch in batches
+            ]
             
-            # Reset mock call counts
-            mock_client.process_stage1.reset_mock()
-            mock_client.process_stage2.reset_mock()
+            results = await asyncio.gather(*tasks)
             
-            # Process same item
-            result2 = await orchestrator2.process_item(item)
+            # Verify all batches processed
+            assert len(results) == len(batches)
+            for result in results:
+                assert result.status == BatchStatus.COMPLETED
+    
+    @pytest.mark.asyncio
+    async def test_cache_integration(self, pipeline_components):
+        """Test cache integration in the pipeline."""
+        orchestrator = pipeline_components['orchestrator']
+        cache = pipeline_components['cache']
+        
+        # Create test data
+        vocab_item = VocabularyFactory.create()
+        stage1_response = Stage1ResponseFactory.create()
+        
+        # Mock API
+        with patch.object(orchestrator.api_client, 'process_stage1') as mock_stage1:
+            mock_stage1.return_value = AsyncMock(return_value=stage1_response)()
             
-            # Should NOT make API calls (cache hit)
-            assert mock_client.process_stage1.call_count == 0
-            assert mock_client.process_stage2.call_count == 0
+            # First call - should hit API
+            result1 = await orchestrator.process_stage1_with_cache(vocab_item)
+            assert mock_stage1.call_count == 1
             
-            # Results should be identical
+            # Second call - should hit cache
+            result2 = await orchestrator.process_stage1_with_cache(vocab_item)
+            assert mock_stage1.call_count == 1  # No additional API call
             assert result1 == result2
     
     @pytest.mark.asyncio
-    async def test_concurrent_processing(self, test_cache_dir):
-        """Test that concurrent processing works correctly"""
+    async def test_data_consistency(self, pipeline_components):
+        """Test data consistency across pipeline stages."""
+        orchestrator = pipeline_components['orchestrator']
+        db_manager = pipeline_components['db_manager']
         
-        with patch('flashcard_pipeline.api_client.OpenRouterClient') as MockClient:
-            mock_client = AsyncMock()
-            MockClient.return_value = mock_client
-            
-            # Track concurrent calls
-            active_calls = 0
-            max_concurrent = 0
-            call_lock = asyncio.Lock()
-            
-            async def track_concurrency(vocab_item):
-                nonlocal active_calls, max_concurrent
-                
-                async with call_lock:
-                    active_calls += 1
-                    max_concurrent = max(max_concurrent, active_calls)
-                
-                # Simulate processing time
-                await asyncio.sleep(0.1)
-                
-                async with call_lock:
-                    active_calls -= 1
-                
-                return Stage1Response(
-                    term_number=vocab_item.position,
-                    term=vocab_item.term,
-                    ipa="[test]",
-                    pos="noun",
-                    primary_meaning="test",
-                    other_meanings="",
-                    metaphor="",
-                    metaphor_noun="",
-                    metaphor_action="",
-                    suggested_location="",
-                    anchor_object="",
-                    anchor_sensory="",
-                    explanation="",
-                    comparison=Comparison(similar_to=[], different_from=[], commonly_confused_with=[]),
-                    homonyms=[],
-                    korean_keywords=[]
-                ), {'total_tokens': 50, 'estimated_cost': 0.0005}
-            
-            mock_client.process_stage1.side_effect = track_concurrency
-            mock_client.process_stage2.return_value = (
-                Stage2Response.from_tsv("1\tterm\t[ipa]\tnoun\tFront\t\t\tBack\t\t\t\tbeginner\tcommon\t\t"),
-                {'total_tokens': 50, 'estimated_cost': 0.0005}
-            )
-            
-            orchestrator = PipelineOrchestrator(
-                cache_dir=str(test_cache_dir),
-                max_concurrent=5,
-                rate_limit=1000  # High limit to test concurrency
-            )
-            
-            # Process many items concurrently
-            items = [VocabularyItem(position=i, term=f"concurrent_{i}") for i in range(20)]
-            
-            start_time = time.time()
-            results = await asyncio.gather(*[
-                orchestrator.process_item(item) for item in items
-            ])
-            total_time = time.time() - start_time
-            
-            # All should complete
-            assert len(results) == 20
-            
-            # Should have achieved concurrency
-            assert max_concurrent >= 3  # At least some concurrency
-            assert max_concurrent <= 5  # Respects limit
-            
-            # Should be faster than sequential (20 * 0.1 = 2 seconds)
-            assert total_time < 1.5
-    
-    @pytest.mark.asyncio
-    async def test_error_recovery_strategies(self, test_cache_dir):
-        """Test various error recovery strategies"""
+        # Create test scenario
+        vocab_items = VocabularyFactory.create_batch(3)
         
-        with patch('flashcard_pipeline.api_client.OpenRouterClient') as MockClient:
-            mock_client = AsyncMock()
-            MockClient.return_value = mock_client
+        # Process with real database
+        async with db_manager.get_connection() as conn:
+            # Insert vocabulary items
+            for item in vocab_items:
+                cursor = await conn.execute(
+                    '''INSERT INTO vocabulary_items (korean, english, nuance_level)
+                       VALUES (?, ?, ?)
+                       RETURNING id''',
+                    (item.korean, item.english, item.nuance_level.value)
+                )
+                item_id = await cursor.fetchone()
+                item.id = item_id[0]
+            await conn.commit()
             
-            # Different error scenarios
-            error_scenarios = {
-                1: RateLimitError("Rate limited", retry_after=1),
-                2: ApiError("Server error", status_code=500, response_body=""),
-                3: ApiError("Bad request", status_code=400, response_body=""),
-                4: NetworkError("Connection timeout"),
-                5: None  # Success
-            }
-            
-            call_count = 0
-            
-            async def varied_responses(vocab_item):
-                nonlocal call_count
-                call_count += 1
+            # Create stage responses
+            for item in vocab_items:
+                # Save Stage 1 response
+                stage1_response = Stage1ResponseFactory.create(
+                    korean_word=item.korean,
+                    english_translation=item.english
+                )
                 
-                error = error_scenarios.get(vocab_item.position)
-                if error:
-                    raise error
+                await conn.execute(
+                    '''INSERT INTO stage1_responses (vocabulary_item_id, response_data)
+                       VALUES (?, ?)''',
+                    (item.id, json.dumps(stage1_response.model_dump()))
+                )
                 
-                return Stage1Response(
-                    term_number=vocab_item.position,
-                    term=vocab_item.term,
-                    ipa="[test]",
-                    pos="noun",
-                    primary_meaning="test",
-                    other_meanings="",
-                    metaphor="",
-                    metaphor_noun="",
-                    metaphor_action="",
-                    suggested_location="",
-                    anchor_object="",
-                    anchor_sensory="",
-                    explanation="",
-                    comparison=Comparison(similar_to=[], different_from=[], commonly_confused_with=[]),
-                    homonyms=[],
-                    korean_keywords=[]
-                ), {'total_tokens': 50, 'estimated_cost': 0.0005}
+                # Save Stage 2 response
+                stage2_response = Stage2ResponseFactory.create(
+                    vocabulary_item_id=item.id
+                )
+                
+                await conn.execute(
+                    '''INSERT INTO stage2_responses (vocabulary_item_id, response_data)
+                       VALUES (?, ?)''',
+                    (item.id, json.dumps(stage2_response.model_dump()))
+                )
+                
+                # Save flashcards
+                for flashcard in stage2_response.flashcards:
+                    await conn.execute(
+                        '''INSERT INTO flashcards 
+                           (id, vocabulary_item_id, difficulty, card_type, front_data, back_data)
+                           VALUES (?, ?, ?, ?, ?, ?)''',
+                        (
+                            flashcard.id,
+                            item.id,
+                            flashcard.difficulty.value,
+                            flashcard.card_type,
+                            json.dumps(flashcard.front.model_dump()),
+                            json.dumps(flashcard.back.model_dump())
+                        )
+                    )
             
-            mock_client.process_stage1.side_effect = varied_responses
-            mock_client.process_stage2.return_value = (
-                Stage2Response.from_tsv("1\tterm\t[ipa]\tnoun\tFront\t\t\tBack\t\t\t\tbeginner\tcommon\t\t"),
-                {'total_tokens': 50, 'estimated_cost': 0.0005}
-            )
+            await conn.commit()
             
-            orchestrator = PipelineOrchestrator(
-                cache_dir=str(test_cache_dir),
-                max_retries=3,
-                retry_delay=0.1
-            )
+            # Verify data consistency
+            cursor = await conn.execute('''
+                SELECT v.id, v.korean, COUNT(f.id) as flashcard_count
+                FROM vocabulary_items v
+                LEFT JOIN flashcards f ON v.id = f.vocabulary_item_id
+                GROUP BY v.id
+            ''')
             
-            # Process items with different error scenarios
-            results = []
-            errors = []
+            results = await cursor.fetchall()
+            assert len(results) == len(vocab_items)
             
-            for position in error_scenarios.keys():
-                item = VocabularyItem(position=position, term=f"error_test_{position}")
-                try:
-                    result = await orchestrator.process_item(item)
-                    results.append((position, result))
-                except Exception as e:
-                    errors.append((position, type(e).__name__))
-            
-            # Item 5 should succeed
-            assert any(pos == 5 for pos, _ in results)
-            
-            # Items 1-4 should have errors
-            assert len(errors) >= 3  # Some might retry successfully
+            for row in results:
+                assert row[2] > 0  # Each item should have flashcards

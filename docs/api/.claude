@@ -1,0 +1,193 @@
+# AI Assistant Guidance for API Documentation
+
+## Purpose
+Document all APIs - external integrations, internal services, and extension points.
+
+## API Documentation Structure
+
+### For Each API Endpoint
+```markdown
+## POST /api/v1/resource
+
+### Purpose
+Brief description of what this endpoint does.
+
+### Authentication
+- Type: Bearer token / API key / None
+- Header: `Authorization: Bearer <token>`
+
+### Request
+\`\`\`json
+{
+    "field1": "string",
+    "field2": 123,
+    "field3": ["array", "of", "values"]
+}
+\`\`\`
+
+### Parameters
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| field1 | string | Yes | Description |
+| field2 | integer | No | Default: 100 |
+
+### Response
+Success (200):
+\`\`\`json
+{
+    "status": "success",
+    "data": {
+        "id": "123",
+        "result": "processed"
+    }
+}
+\`\`\`
+
+### Errors
+| Code | Description | Example |
+|------|-------------|---------|
+| 400 | Bad Request | Invalid field1 format |
+| 429 | Rate Limited | Too many requests |
+
+### Examples
+\`\`\`python
+# Python example
+response = await client.post("/api/v1/resource", json={
+    "field1": "value"
+})
+\`\`\`
+
+### Rate Limits
+- 60 requests per minute
+- Burst: 10 requests
+```
+
+## Common Documentation Tasks
+
+### Adding New Endpoint
+1. Use the template above
+2. Include all parameters
+3. Show success and error responses
+4. Add code examples
+5. Document rate limits
+
+### Updating Existing API
+1. Mark deprecated features
+2. Show migration path
+3. Update examples
+4. Note version changes
+
+### Documenting External APIs
+Focus on:
+- How we use it (not their full docs)
+- Our specific configuration
+- Error handling approach
+- Rate limit management
+
+## OpenAPI/Swagger Integration
+
+If using OpenAPI:
+```yaml
+openapi: 3.0.0
+info:
+  title: Flashcard Pipeline API
+  version: 1.0.0
+paths:
+  /api/v1/process:
+    post:
+      summary: Process vocabulary items
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VocabularyRequest'
+```
+
+## Best Practices
+
+### Consistency
+- Same format for all endpoints
+- Consistent error codes
+- Standard response structure
+- Uniform authentication
+
+### Completeness
+- All parameters documented
+- All error cases covered
+- Rate limits specified
+- Examples that work
+
+### Clarity
+- Purpose stated clearly
+- Parameter descriptions helpful
+- Error messages actionable
+- Examples realistic
+
+## API Versioning Strategy
+
+### URL Versioning
+```
+/api/v1/endpoint  (current)
+/api/v2/endpoint  (new version)
+```
+
+### Documentation Updates
+```markdown
+## Endpoint Name
+
+**Version**: 2.0
+**Deprecated**: Version 1.0 will be removed on 2024-12-31
+
+### Changes from v1
+- Added `newField` parameter
+- Changed `oldField` to optional
+- Response includes additional data
+```
+
+## Security Documentation
+
+Always document:
+- Authentication method
+- Required permissions
+- Data encryption
+- Rate limiting
+- Input validation
+
+## Testing Documentation
+
+Include:
+```markdown
+### Testing
+Test endpoint:
+\`\`\`bash
+curl -X POST https://api.example.com/v1/endpoint \
+  -H "Authorization: Bearer test_token" \
+  -H "Content-Type: application/json" \
+  -d '{"test": "data"}'
+\`\`\`
+
+Expected response:
+\`\`\`json
+{"status": "success", "data": {...}}
+\`\`\`
+```
+
+## Do Not
+
+- Leave out error responses
+- Skip authentication details
+- Forget rate limits
+- Use outdated examples
+- Mix internal and external APIs
+- Expose sensitive information
+
+## Plugin API Special Considerations
+
+For plugin APIs, also document:
+- Plugin interface/base class
+- Registration process
+- Lifecycle hooks
+- Available APIs for plugins
+- Security restrictions
+- Example plugin implementation

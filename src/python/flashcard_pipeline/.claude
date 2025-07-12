@@ -1,0 +1,100 @@
+# AI Assistant Guidance for flashcard_pipeline Package
+
+## Package Overview
+This is the main Python package containing all business logic for the flashcard pipeline system.
+
+## Key Components to Understand
+
+### Core Flow
+1. **Input**: CSV/Database → Models (validation)
+2. **Processing**: Pipeline → API Client → Cache/RateLimiter
+3. **Output**: Database → Exporters → Various formats
+
+### Module Responsibilities
+- **api_client.py**: Only handles OpenRouter communication
+- **pipeline.py**: Orchestrates the entire flow
+- **models.py**: Data validation and structure
+- **database/**: All database operations
+- **concurrent/**: Parallel processing logic
+
+## Common Development Tasks
+
+### Adding a New API Endpoint
+1. Update `api_client.py` with new method
+2. Add request/response models to `models.py`
+3. Update rate limits if needed
+4. Add tests for the new endpoint
+
+### Modifying Database Schema
+1. Create migration in `/migrations/`
+2. Update models in `database/models.py`
+3. Update validation in `database/validation.py`
+4. Run migration and test
+
+### Adding New Export Format
+1. Create new exporter in `exporters/`
+2. Implement the base exporter interface
+3. Register in `exporters/__init__.py`
+4. Add tests for the format
+
+### Performance Optimization
+1. Check cache hit rates first
+2. Review concurrent processing settings
+3. Profile database queries
+4. Consider batch sizes
+
+## Important Patterns
+
+### Error Handling
+```python
+try:
+    result = await operation()
+except ValidationError as e:
+    # Handle validation errors
+except APIError as e:
+    # Handle API errors
+except Exception as e:
+    logger.error(f"Unexpected error: {e}")
+    raise
+```
+
+### Async Operations
+```python
+async def process_items(items):
+    async with ClientSession() as session:
+        tasks = [process_item(item, session) for item in items]
+        return await asyncio.gather(*tasks)
+```
+
+### Database Transactions
+```python
+async with db_manager.transaction() as conn:
+    # All operations in transaction
+    await conn.execute(...)
+    await conn.execute(...)
+    # Auto-commit on success, rollback on error
+```
+
+## Testing Guidelines
+
+1. **Unit Tests**: Mock external dependencies
+2. **Integration Tests**: Use test database
+3. **API Tests**: Use recorded responses
+4. **Performance Tests**: Profile critical paths
+
+## Do Not
+
+- Import from parent directories
+- Use synchronous I/O in async functions
+- Bypass validation models
+- Hardcode configuration values
+- Skip error handling
+- Mix business logic with I/O
+
+## Performance Tips
+
+1. Use batch operations for database
+2. Leverage caching for repeated API calls
+3. Process concurrently when possible
+4. Monitor rate limits closely
+5. Profile before optimizing

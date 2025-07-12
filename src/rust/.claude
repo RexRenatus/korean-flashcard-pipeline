@@ -1,0 +1,54 @@
+# AI Assistant Guidance for Rust Directory
+
+## Important Status
+⚠️ **This is a PLANNED implementation** - No active Rust code exists yet. All current functionality is in Python.
+
+## Do Not
+- Start implementing Rust code without architectural review
+- Assume Rust is needed for current features
+- Create dependencies on non-existent Rust code
+- Modify the directory structure
+
+## When Rust Implementation Begins
+
+### Key Principles
+1. **Performance First** - Only implement in Rust what needs the speed
+2. **Clean Interfaces** - Well-defined boundaries with Python
+3. **Safety** - Leverage Rust's memory safety
+4. **Simplicity** - Don't over-engineer
+
+### Integration Points
+- Database: Share SQLite, don't create separate storage
+- API: Use JSON for data exchange
+- Errors: Map Rust errors to Python exceptions
+- Logging: Unified logging across languages
+
+### Development Approach
+```rust
+// Start with core algorithms
+pub fn process_korean_text(text: &str) -> Result<ProcessedText, Error> {
+    // Implementation
+}
+
+// Then add Python bindings
+#[pyfunction]
+fn py_process_korean_text(text: &str) -> PyResult<String> {
+    match process_korean_text(text) {
+        Ok(result) => Ok(serde_json::to_string(&result)?),
+        Err(e) => Err(PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(
+            format!("Processing failed: {}", e)
+        ))
+    }
+}
+```
+
+## Current Action Required
+**Nothing** - This is placeholder structure for future optimization. Direct users to Python implementation for all current work.
+
+## Future Considerations
+When Rust implementation is approved:
+1. Define clear performance targets
+2. Identify bottlenecks in Python code
+3. Create integration test suite
+4. Plan gradual migration
+5. Maintain Python fallbacks

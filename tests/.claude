@@ -1,0 +1,169 @@
+# AI Assistant Guidance for Tests Directory
+
+## Testing Philosophy
+Tests are documentation that runs. They should clearly show how the system works and catch regressions.
+
+## Test Organization
+
+### By Phase
+- **Phase 1**: Foundation (models, config, errors)
+- **Phase 2**: Components (cache, rate limiter, etc.)
+- **Phase 3**: Integration (components working together)
+- **Phase 4**: Performance (speed, memory, load)
+- **Phase 5**: End-to-End (full user scenarios)
+
+### By Type
+- **Unit**: Single function/class in isolation
+- **Integration**: Multiple components together
+- **E2E**: Complete user workflows
+
+## Writing Good Tests
+
+### Test Structure (AAA Pattern)
+```python
+def test_feature_behavior():
+    # Arrange - Set up test data
+    input_data = create_test_data()
+    
+    # Act - Execute the feature
+    result = feature_under_test(input_data)
+    
+    # Assert - Verify the result
+    assert result.status == "success"
+    assert result.value == expected_value
+```
+
+### Descriptive Names
+```python
+# Good
+def test_rate_limiter_allows_requests_within_limit():
+def test_cache_returns_none_for_expired_entries():
+def test_api_client_retries_on_temporary_failure():
+
+# Bad
+def test_rate_limiter():
+def test_cache():
+def test_retry():
+```
+
+### Use Fixtures
+```python
+@pytest.fixture
+def sample_vocabulary():
+    return VocabularyItem(
+        korean="안녕하세요",
+        english="Hello",
+        type="phrase"
+    )
+
+def test_validation(sample_vocabulary):
+    assert sample_vocabulary.is_valid()
+```
+
+## Testing Async Code
+
+```python
+@pytest.mark.asyncio
+async def test_async_operation():
+    result = await async_function()
+    assert result is not None
+```
+
+## Mocking External Services
+
+### API Calls
+```python
+@patch('flashcard_pipeline.api_client.httpx.AsyncClient.post')
+async def test_api_call(mock_post):
+    mock_post.return_value.json.return_value = {"result": "success"}
+    # Test code
+```
+
+### Database
+```python
+@pytest.fixture
+def test_db():
+    # Use in-memory database
+    return DatabaseManager(":memory:")
+```
+
+## Common Testing Patterns
+
+### Parametrized Tests
+```python
+@pytest.mark.parametrize("input,expected", [
+    ("hello", "HELLO"),
+    ("world", "WORLD"),
+    ("", ""),
+])
+def test_uppercase(input, expected):
+    assert input.upper() == expected
+```
+
+### Exception Testing
+```python
+def test_raises_on_invalid_input():
+    with pytest.raises(ValidationError) as exc_info:
+        process_invalid_data()
+    assert "Invalid format" in str(exc_info.value)
+```
+
+### Timeout Testing
+```python
+@pytest.mark.timeout(5)
+async def test_completes_within_timeout():
+    await potentially_slow_operation()
+```
+
+## Performance Testing
+
+```python
+def test_performance(benchmark):
+    result = benchmark(function_to_test, arg1, arg2)
+    assert result == expected
+```
+
+## Coverage Guidelines
+
+1. **Line Coverage**: Aim for >85%
+2. **Branch Coverage**: Test all if/else paths
+3. **Error Paths**: Test exception handling
+4. **Edge Cases**: Empty, null, maximum values
+
+## Test Data Management
+
+### Use Factories
+```python
+def create_test_flashcard(**kwargs):
+    defaults = {
+        "korean": "테스트",
+        "english": "test",
+        "difficulty": 1
+    }
+    defaults.update(kwargs)
+    return Flashcard(**defaults)
+```
+
+### Test Data Files
+- Keep in `tests/data/`
+- Use small, focused datasets
+- Document data format
+
+## Do Not
+
+- Make real API calls
+- Use production database
+- Test implementation details
+- Write brittle tests
+- Ignore flaky tests
+- Skip error cases
+- Use sleep() for timing
+- Share state between tests
+
+## Debugging Failed Tests
+
+1. Run single test with `-v` for verbose output
+2. Use `--pdb` to drop into debugger on failure
+3. Add print statements temporarily
+4. Check test isolation
+5. Verify mock configuration

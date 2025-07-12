@@ -1,0 +1,228 @@
+# AI Assistant Guidance for Implementation Documentation
+
+## Purpose
+Document HOW features were built, providing detailed implementation guides and technical decisions.
+
+## Audience
+- Developers implementing features
+- Maintainers understanding code
+- Contributors extending functionality
+
+## Key Documents
+
+### CLI_IMPLEMENTATION_PLAN.md
+- 5-phase implementation roadmap
+- Command structure
+- Feature progression
+
+### CONCURRENT_PROCESSING_ARCHITECTURE.md
+- Performance optimization design
+- Concurrency patterns
+- Thread safety considerations
+
+### CONCURRENT_IMPLEMENTATION_PLAN.md
+- Step-by-step building guide
+- Code examples
+- Testing strategies
+
+## Writing Implementation Docs
+
+### Structure Template
+```markdown
+# Feature Implementation
+
+## Overview
+What we're building and why.
+
+## Design Decisions
+- Decision 1: Rationale
+- Decision 2: Trade-offs
+
+## Implementation Phases
+
+### Phase 1: Foundation
+#### Goals
+- Specific deliverables
+
+#### Implementation
+\`\`\`python
+# Actual code examples
+\`\`\`
+
+#### Testing
+- How to verify
+
+### Phase 2: Core Features
+[Continue pattern]
+
+## Code Examples
+### Basic Usage
+\`\`\`python
+# Simple example
+\`\`\`
+
+### Advanced Usage
+\`\`\`python
+# Complex example
+\`\`\`
+
+## Performance Considerations
+- Bottlenecks addressed
+- Optimization strategies
+
+## Testing Strategy
+- Unit test approach
+- Integration test design
+- Performance benchmarks
+
+## Troubleshooting
+Common issues and solutions.
+```
+
+## Implementation Patterns
+
+### Phased Implementation
+```markdown
+## Phase 1: Foundation (Week 1)
+- [ ] Core data structures
+- [ ] Basic operations
+- [ ] Error handling
+- [ ] Unit tests
+
+## Phase 2: Features (Week 2)
+- [ ] Primary functionality
+- [ ] Integration points
+- [ ] Integration tests
+
+## Phase 3: Polish (Week 3)
+- [ ] Performance optimization
+- [ ] Error recovery
+- [ ] Documentation
+```
+
+### Code Evolution
+Show how code evolves:
+```python
+# Version 1: Basic
+def process(item):
+    return transform(item)
+
+# Version 2: Error handling
+def process(item):
+    try:
+        return transform(item)
+    except Exception as e:
+        logger.error(f"Failed: {e}")
+        raise
+
+# Version 3: Performance
+async def process(item):
+    try:
+        cached = await cache.get(item.id)
+        if cached:
+            return cached
+        result = await transform(item)
+        await cache.set(item.id, result)
+        return result
+    except Exception as e:
+        logger.error(f"Failed: {e}")
+        raise
+```
+
+## Common Documentation Needs
+
+### Performance Optimization
+Document:
+- Baseline metrics
+- Optimization approach
+- Results achieved
+- Trade-offs made
+
+### Concurrent Implementation
+Explain:
+- Thread safety measures
+- Synchronization points
+- Race condition prevention
+- Testing approach
+
+### Error Handling
+Show:
+- Error hierarchy
+- Recovery strategies
+- User messaging
+- Logging approach
+
+## Best Practices
+
+### Code Examples
+- Test all examples
+- Show complete context
+- Include imports
+- Demonstrate error cases
+
+### Decision Documentation
+```markdown
+## Design Decision: Async vs Threading
+
+### Options Considered
+1. **asyncio** - Single thread, event loop
+2. **threading** - Multiple threads
+3. **multiprocessing** - Multiple processes
+
+### Decision: asyncio
+**Rationale**:
+- I/O bound workload
+- Simpler debugging
+- Better library support
+
+**Trade-offs**:
+- Single core limitation
+- Requires async libraries
+```
+
+### Progress Tracking
+```markdown
+## Implementation Status
+
+### Completed ✅
+- Core algorithm
+- Basic tests
+- Error handling
+
+### In Progress 🚧
+- Performance optimization
+- Integration tests
+
+### Planned 📋
+- Advanced features
+- Documentation
+```
+
+## Do Not
+
+- Skip the "why" behind decisions
+- Show only final code
+- Forget error handling
+- Ignore performance impact
+- Skip testing details
+- Use untested examples
+
+## Tips
+
+### Make It Reproducible
+- Include all dependencies
+- Show exact commands
+- Provide test data
+- Document environment
+
+### Show Evolution
+- Start simple
+- Build incrementally
+- Explain each addition
+- Show refactoring
+
+### Include Metrics
+- Before/after performance
+- Resource usage
+- Error rates
+- User impact

@@ -55,6 +55,16 @@ For contributors and developers:
 - [Database Optimization](./architecture/DATABASE_SCHEMA.md#optimization)
 - [Custom Integrations](./developer/INTEGRATIONS.md)
 
+## 🔄 Recent Updates - 2025-01 Refactoring
+
+The codebase has undergone a comprehensive refactoring achieving:
+- **55% code reduction** through intelligent consolidation
+- **Modular architecture** with clear separation of concerns
+- **Protected cli_v2.py** - The main vocabulary generation script remains unchanged
+- **Zero breaking changes** - All existing functionality preserved
+
+See [REFACTORING_COMPLETE.md](../REFACTORING_COMPLETE.md) for details.
+
 ## 📋 Document Status
 
 | Document | Status | Last Updated |
@@ -64,6 +74,8 @@ For contributors and developers:
 | Database Schema | ✅ Complete | 2025-01-07 |
 | CLI Implementation | ✅ Complete | 2025-01-07 |
 | Concurrent Processing | ✅ Complete | 2025-01-07 |
+| Refactoring Report | ✅ Complete | 2025-01-11 |
+| Scripts Consolidation | ✅ Complete | 2025-01-11 |
 | Quick Start Guide | 🚧 In Progress | - |
 | Plugin API | 📝 Planned | - |
 | Developer Guide | 📝 Planned | - |

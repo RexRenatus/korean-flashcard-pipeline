@@ -1,0 +1,88 @@
+# AI Assistant Guidance for Concurrent Module
+
+## Critical Understanding
+This module handles parallel processing. Bugs here can cause race conditions, deadlocks, or data corruption.
+
+## Key Concepts
+
+### Worker Pool Pattern
+```python
+# Workers process items independently
+async def worker(queue):
+    while True:
+        item = await queue.get()
+        if item is None:  # Shutdown signal
+            break
+        try:
+            await process(item)
+        except Exception as e:
+            # Log but don't crash worker
+            logger.error(f"Worker error: {e}")
+        finally:
+            queue.task_done()
+```
+
+### Synchronization
+- Use asyncio.Lock for critical sections
+- Prefer queue-based communication
+- Avoid shared mutable state
+- Use asyncio.gather for parallel tasks
+
+## Common Pitfalls
+
+1. **Race Conditions**
+   - Always use locks for shared resources
+   - Be careful with database connections
+   - Don't assume operation order
+
+2. **Resource Exhaustion**
+   - Limit concurrent connections
+   - Use semaphores for resource pools
+   - Monitor memory usage
+
+3. **Deadlocks**
+   - Acquire locks in consistent order
+   - Use timeouts on lock acquisition
+   - Avoid nested locks when possible
+
+## Testing Concurrent Code
+
+```python
+# Test with different worker counts
+@pytest.mark.parametrize("workers", [1, 2, 4, 8])
+async def test_concurrent_processing(workers):
+    # Test logic
+```
+
+## Performance Patterns
+
+### Batch Processing
+```python
+async def process_in_batches(items, batch_size=100):
+    for i in range(0, len(items), batch_size):
+        batch = items[i:i + batch_size]
+        await asyncio.gather(*[process(item) for item in batch])
+```
+
+### Rate Limiting
+```python
+# Use semaphore for simple limiting
+sem = asyncio.Semaphore(10)  # Max 10 concurrent
+async with sem:
+    await operation()
+```
+
+## Debugging Tips
+
+1. Enable asyncio debug mode
+2. Use structured logging with correlation IDs
+3. Monitor task states
+4. Watch for "Task was destroyed but pending" warnings
+
+## Do Not
+
+- Share database connections between workers
+- Use threading with asyncio
+- Ignore exceptions in workers
+- Create unbounded queues
+- Forget to clean up resources

@@ -1,0 +1,177 @@
+# AI Assistant Guidance for Integration Tests
+
+## Integration Test Philosophy
+Test the seams where components meet. Focus on data flow and error propagation between components.
+
+## Key Differences from Unit Tests
+
+### Scope
+- **Unit**: One class/function in isolation
+- **Integration**: Multiple components working together
+
+### Mocking
+- **Unit**: Mock everything except tested unit
+- **Integration**: Mock only external services (API, filesystem)
+
+### Speed
+- **Unit**: <100ms per test
+- **Integration**: 100ms-2s acceptable
+
+## Common Integration Patterns
+
+### Database Integration
+```python
+@pytest.fixture
+async def db_with_data():
+    """Database with test data"""
+    db = DatabaseManager(":memory:")
+    await db.initialize()
+    
+    # Add test data
+    await db.create_vocabulary({
+        "korean": "테스트",
+        "english": "test"
+    })
+    
+    yield db
+    
+    # Cleanup
+    await db.close()
+
+async def test_pipeline_with_database(db_with_data):
+    pipeline = Pipeline(db=db_with_data)
+    results = await pipeline.process_new_items()
+    assert len(results) > 0
+```
+
+### Component Chain Testing
+```python
+async def test_request_flow():
+    """Test request through rate limiter, circuit breaker, cache, to API"""
+    # Setup chain
+    rate_limiter = RateLimiter(rate=10)
+    circuit_breaker = CircuitBreaker()
+    cache = Cache()
+    api_client = APIClient(
+        rate_limiter=rate_limiter,
+        circuit_breaker=circuit_breaker,
+        cache=cache
+    )
+    
+    # Make requests
+    results = []
+    for i in range(15):
+        try:
+            result = await api_client.make_request(f"key_{i}")
+            results.append(result)
+        except RateLimitExceeded:
+            results.append(None)
+    
+    # Verify behavior
+    successful = [r for r in results if r is not None]
+    assert len(successful) == 10  # Rate limit enforced
+    assert cache.size > 0  # Cache populated
+    assert circuit_breaker.failure_count == 0  # No failures
+```
+
+### Error Propagation Testing
+```python
+async def test_error_handling_across_components():
+    """Verify errors propagate correctly through the system"""
+    # Setup with failing component
+    api_client = MockAPIClient(fail_after=3)
+    pipeline = Pipeline(api_client=api_client)
+    
+    # Process items
+    items = [VocabularyItem(...) for _ in range(5)]
+    results = await pipeline.process(items)
+    
+    # Verify partial success
+    assert sum(1 for r in results if r.success) == 3
+    assert sum(1 for r in results if not r.success) == 2
+    
+    # Verify error details preserved
+    failed = [r for r in results if not r.success]
+    assert all("API error" in r.error_message for r in failed)
+```
+
+## Testing Strategies
+
+### 1. Test the Happy Path First
+```python
+async def test_successful_import_workflow():
+    """Complete import workflow with valid data"""
+    importer = ImportService(db, validator)
+    result = await importer.import_csv("valid_data.csv")
+    
+    assert result.success
+    assert result.imported_count > 0
+    assert result.errors == []
+```
+
+### 2. Then Test Error Cases
+```python
+async def test_import_with_invalid_data():
+    """Import workflow with validation errors"""
+    importer = ImportService(db, validator)
+    result = await importer.import_csv("invalid_data.csv")
+    
+    assert not result.success
+    assert result.imported_count < result.total_count
+    assert len(result.errors) > 0
+```
+
+### 3. Test Resource Cleanup
+```python
+async def test_cleanup_on_error():
+    """Ensure resources cleaned up on failure"""
+    # Track resource usage
+    initial_connections = db.pool.active_connections
+    
+    try:
+        await failing_operation(db)
+    except Exception:
+        pass
+    
+    # Verify cleanup
+    assert db.pool.active_connections == initial_connections
+```
+
+## Common Integration Issues
+
+### Race Conditions
+```python
+# Use locks or queues to test concurrent access
+async def test_concurrent_database_writes():
+    async def write_data(db, id):
+        async with db.transaction():
+            await db.create_item(id)
+    
+    # Run concurrently
+    tasks = [write_data(db, i) for i in range(10)]
+    await asyncio.gather(*tasks)
+    
+    # Verify all succeeded
+    items = await db.get_all_items()
+    assert len(items) == 10
+```
+
+### State Leakage
+```python
+# Always reset state between tests
+@pytest.fixture(autouse=True)
+async def reset_singletons():
+    """Reset singleton states between tests"""
+    Cache._instance = None
+    RateLimiter._instance = None
+    yield
+```
+
+## Do Not
+
+- Test all possible combinations (combinatorial explosion)
+- Use production credentials or data
+- Ignore flaky tests (fix them!)
+- Share state between test functions
+- Make assumptions about execution order
+- Skip error path testing

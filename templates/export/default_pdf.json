@@ -1,0 +1,9 @@
+{
+  "name": "Default PDF Layout",
+  "description": "Standard PDF layout for flashcards",
+  "layout": "cards",
+  "page_size": "A4",
+  "include_metadata": true,
+  "include_tags": true,
+  "include_statistics": true
+}

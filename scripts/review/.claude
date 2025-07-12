@@ -1,0 +1,149 @@
+# AI Assistant Guidance for Review Scripts
+
+## Critical Understanding
+These are SECURITY and COMPLIANCE scripts. They enforce rules and protect against dangerous operations. DO NOT modify without understanding the full implications.
+
+## Purpose
+These scripts implement automated review and safety checks for Claude Code operations, ensuring compliance with project rules and preventing dangerous actions.
+
+## Script Types
+
+### Standard Review Scripts
+- `pre_task_review.sh` - Basic compliance checks
+- `post_task_review.sh` - Post-execution validation
+
+### Enhanced Safety Scripts (PRODUCTION)
+- `pre_task_review_enhanced.sh` - Advanced security with hard blocks
+- `post_task_review_enhanced.sh` - Comprehensive security audit
+
+## Security Features That Cannot Be Bypassed
+
+Even with `dangerously_skip_permissions`, these are ALWAYS blocked:
+
+1. **System Destruction**
+   - `rm -rf /` or any system directory
+   - Disk formatting commands
+   - Device writes
+
+2. **Credential Exposure**
+   - API keys in logs
+   - Environment dumps
+   - .env file exposure
+
+3. **Malicious Commands**
+   - Fork bombs
+   - Memory exhaustion
+   - Network attacks
+
+## Working with Review Scripts
+
+### Testing Changes
+```bash
+# Always test in isolated environment
+./test_enhanced_safety.sh
+
+# Test specific scenarios
+./test_skip_permissions.sh
+```
+
+### Adding New Rules
+1. Identify the security concern
+2. Add pattern to appropriate blacklist
+3. Test both positive and negative cases
+4. Document the rule and rationale
+5. Update test suite
+
+### Modifying Existing Rules
+⚠️ **EXTREME CAUTION REQUIRED**
+1. Understand why the rule exists
+2. Assess security implications
+3. Get review from security-minded person
+4. Test thoroughly
+5. Document changes
+
+## Common Patterns
+
+### Adding File Pattern Protection
+```bash
+# In SENSITIVE_FILE_PATTERNS array
+SENSITIVE_FILE_PATTERNS+=(
+    "*.pem"      # Private keys
+    "*.p12"      # Certificates
+    "*_secret*"  # Secret files
+)
+```
+
+### Adding Command Blacklist
+```bash
+# In BLACKLISTED_COMMANDS array
+BLACKLISTED_COMMANDS+=(
+    "curl * | bash"     # Remote execution
+    "wget * | sh"       # Remote execution
+    "eval *"            # Code injection risk
+)
+```
+
+### Adding Protected Directory
+```bash
+# In PROTECTED_DIRECTORIES array
+PROTECTED_DIRECTORIES+=(
+    "$HOME/.ssh"        # SSH keys
+    "$HOME/.aws"        # AWS credentials
+    "/etc/passwd"       # System users
+)
+```
+
+## Integration with Claude Settings
+
+The scripts are called by `.claude/settings.json` hooks:
+```json
+{
+  "pre_task_hook": "./scripts/review/pre_task_review_enhanced.sh",
+  "post_task_hook": "./scripts/review/post_task_review_enhanced.sh"
+}
+```
+
+## Debugging Review Failures
+
+1. Check logs in `~/.claude/hook_data/`
+2. Look for specific violation messages
+3. Verify JSON input format
+4. Test with simplified inputs
+5. Enable debug mode in scripts
+
+## Performance Considerations
+
+- Scripts run on EVERY operation
+- Keep checks efficient
+- Use early exits for common cases
+- Cache expensive operations
+- Log performance metrics
+
+## Do Not
+
+- Disable security checks without approval
+- Add broad exemptions
+- Skip logging for any operation
+- Remove audit trails
+- Weaken existing protections
+- Trust user input without validation
+- Ignore security warnings
+
+## Emergency Procedures
+
+If scripts are blocking legitimate work:
+1. Document the specific need
+2. Create temporary exemption (time-limited)
+3. Log exemption with rationale
+4. Review and remove exemption ASAP
+5. Update rules to handle legitimate case
+
+## Security Incident Response
+
+If a security violation is detected:
+1. Block the operation (done automatically)
+2. Log full details (done automatically)
+3. Review audit logs
+4. Assess potential damage
+5. Update rules if needed
+6. Document incident

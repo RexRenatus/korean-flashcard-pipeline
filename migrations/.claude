@@ -1,0 +1,212 @@
+# AI Assistant Guidance for Migrations
+
+## Critical Understanding
+Database migrations are PERMANENT changes to user data. Mistakes can cause data loss. Always proceed with extreme caution.
+
+## Migration Principles
+
+### 1. Safety First
+- ALWAYS backup before migrating
+- ALWAYS use transactions
+- ALWAYS test on copy first
+- NEVER modify existing migrations
+- NEVER run untested migrations
+
+### 2. Forward Only
+- Migrations go forward in sequence
+- Create new migrations to fix issues
+- Don't rely on rollback scripts
+
+### 3. Idempotency
+- Migrations should be safe to run multiple times
+- Use `IF NOT EXISTS` for creates
+- Check before modifying
+
+## Writing Migrations
+
+### Template for New Migration
+```sql
+-- Migration: XXX_descriptive_name
+-- Description: What this migration does and why
+-- Author: Your name
+-- Date: YYYY-MM-DD
+-- WARNING: Backup database before running
+
+-- Check if migration needed
+-- SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='new_table';
+
+-- Up Migration
+BEGIN TRANSACTION;
+
+-- Your changes here
+-- Use IF NOT EXISTS for safety
+
+-- Record migration
+INSERT OR IGNORE INTO schema_migrations (version, name) 
+VALUES (XXX, 'descriptive_name');
+
+COMMIT;
+
+-- Down Migration (DO NOT UNCOMMENT IN PRODUCTION)
+-- BEGIN TRANSACTION;
+-- -- Rollback steps
+-- DELETE FROM schema_migrations WHERE version = XXX;
+-- COMMIT;
+
+-- Verification queries
+-- SELECT sql FROM sqlite_master WHERE name='new_table';
+```
+
+### Common Patterns
+
+#### Adding a Column
+```sql
+-- Safe way to add column (SQLite limitations)
+BEGIN TRANSACTION;
+
+-- Check if column exists first
+-- SQLite doesn't have IF NOT EXISTS for columns
+CREATE TABLE IF NOT EXISTS temp_check AS 
+SELECT * FROM vocabulary_master WHERE 0;
+
+-- If this fails, column already exists
+ALTER TABLE vocabulary_master ADD COLUMN new_field TEXT;
+
+DROP TABLE temp_check;
+
+COMMIT;
+```
+
+#### Creating Index
+```sql
+-- Idempotent index creation
+CREATE INDEX IF NOT EXISTS idx_vocabulary_korean 
+ON vocabulary_master(korean);
+```
+
+#### Data Migration
+```sql
+-- Always in transaction
+BEGIN TRANSACTION;
+
+-- Backup data first
+CREATE TABLE backup_data AS SELECT * FROM vocabulary_master;
+
+-- Perform migration
+UPDATE vocabulary_master 
+SET field = new_value 
+WHERE condition;
+
+-- Verify
+SELECT COUNT(*) FROM vocabulary_master WHERE field = new_value;
+
+-- Drop backup only after verification
+-- DROP TABLE backup_data;
+
+COMMIT;
+```
+
+## Testing Migrations
+
+### Test Checklist
+```bash
+# 1. Copy production database
+cp production.db test.db
+
+# 2. Check current state
+sqlite3 test.db ".schema"
+sqlite3 test.db "SELECT COUNT(*) FROM vocabulary_master;"
+
+# 3. Run migration
+sqlite3 test.db < migrations/XXX_new_migration.sql
+
+# 4. Verify changes
+sqlite3 test.db ".schema"
+sqlite3 test.db "SELECT * FROM new_table LIMIT 5;"
+
+# 5. Test application
+python test_script.py --db test.db
+
+# 6. Performance check
+sqlite3 test.db "EXPLAIN QUERY PLAN SELECT ...;"
+```
+
+## Common Issues
+
+### SQLite Limitations
+```sql
+-- Cannot do these directly:
+-- ALTER TABLE ADD CONSTRAINT
+-- ALTER TABLE DROP COLUMN  
+-- ALTER TABLE RENAME COLUMN (older versions)
+-- ALTER TABLE MODIFY COLUMN
+
+-- Workaround: Create new table
+CREATE TABLE vocabulary_master_new (
+    -- New schema
+);
+
+INSERT INTO vocabulary_master_new 
+SELECT ... FROM vocabulary_master;
+
+-- Swap tables
+```
+
+### Lock Errors
+```sql
+-- Check for locks
+SELECT * FROM sqlite_master WHERE type='table';
+
+-- If locked, close all connections
+-- Then retry with immediate mode
+BEGIN IMMEDIATE TRANSACTION;
+-- Migration here
+COMMIT;
+```
+
+## Migration Review Checklist
+
+Before running any migration:
+
+- [ ] Backup exists and verified
+- [ ] Migration tested on data copy
+- [ ] Transaction boundaries correct
+- [ ] Idempotent operations used
+- [ ] No data loss possible
+- [ ] Performance impact assessed
+- [ ] Rollback plan exists
+- [ ] Application code compatible
+- [ ] Migration documented
+
+## Emergency Procedures
+
+### If Migration Fails
+1. DON'T PANIC
+2. Note exact error
+3. Check if transaction rolled back
+4. Restore from backup if needed
+5. Fix issue in new migration
+6. Document what happened
+
+### Data Recovery
+```bash
+# If backup exists
+cp backup.db pipeline.db
+
+# If using WAL mode
+sqlite3 pipeline.db "PRAGMA wal_checkpoint(TRUNCATE);"
+
+# Check integrity
+sqlite3 pipeline.db "PRAGMA integrity_check;"
+```
+
+## Do Not
+
+- Edit migrations after they're applied
+- Skip testing on real data
+- Ignore SQLite limitations
+- Run migrations during high load
+- Forget to update documentation
+- Trust rollback scripts completely
+- Mix schema and data changes
+- Use string concatenation in SQL
