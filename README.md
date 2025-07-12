@@ -26,9 +26,9 @@ This project implements a sophisticated two-stage AI pipeline that transforms Ko
 
 **Version**: 2.0.0 (Post-Refactoring)  
 **Status**: Production Ready with Clean Architecture ✅  
-**Last Updated**: January 11, 2025
+**Last Updated**: July 12, 2025
 
-### 🎉 Recent Achievements (2025-01 Refactoring)
+### 🎉 Recent Achievements (2025-07 Refactoring)
 - ✅ **55% code reduction** through intelligent consolidation
 - ✅ **Modular architecture** with 7 clean packages
 - ✅ **Scripts reorganized** from 40+ files to 20 organized tools
@@ -125,6 +125,65 @@ python -m flashcard_pipeline process input.csv --limit 100 --output korean_flash
 - **[API Documentation](./docs/api/README.md)** - API specifications and contracts
 - **[Architecture Overview](./docs/architecture/README.md)** - System design and architecture
 - **[Developer Guide](./docs/developer/README.md)** - Contributing and development
+
+## 📝 Cache Format Examples
+
+The pipeline uses a sophisticated caching system to avoid repeating expensive API calls. Cache files are stored in JSON format with complete processing results:
+
+### Stage 2 Cache Structure
+```json
+{
+  "vocabulary_item": {
+    "position": 714,
+    "term": "문을",
+    "type": "noun",
+    "nuance_level": null
+  },
+  "stage1_result": {
+    "term_number": 714,
+    "term": "문을[mu.nɯl]",
+    "ipa": "[mu.nɯl]",
+    "pos": "noun",
+    "primary_meaning": "door (with object particle 을)",
+    "other_meanings": "gate, entrance, family lineage, academic field",
+    "metaphor": "A heavy wooden barrier that swings open with a satisfying creak",
+    "comparison": {
+      "vs": "창문[tʃʰaŋ.mun] (window)",
+      "nuance": "문 is for passage through; 창문 is for looking through and light"
+    },
+    "homonyms": [
+      {
+        "hanja": "門",
+        "reading": "문[mun]",
+        "meaning": "door, gate, entrance",
+        "differentiator": "most common meaning - physical door"
+      }
+    ]
+  },
+  "response": {
+    "rows": [
+      {
+        "position": 1,
+        "term": "문을[mu.nɯl]",
+        "term_number": 714,
+        "tab_name": "Scene",
+        "front": "Stepping through another portal, you enter the old traditional house entrance. What single architectural feature demands your full attention?",
+        "back": "A heavy wooden barrier stands before you, its weathered surface marked by decades of use while brass hinges gleam in filtered sunlight...",
+        "tags": "term:문을,pos:noun,card:Scene,concept:metaphor,metaphor:wooden_barrier"
+      }
+    ]
+  },
+  "tokens": 17661,
+  "cached_at": "2025-07-10T23:48:49.019829"
+}
+```
+
+### Cache Benefits
+- **Permanent Storage**: Never lose expensive AI-generated content
+- **Token Tracking**: Monitor API usage and costs
+- **Resume Capability**: Restart processing from where you left off
+- **Cache Hit Rate**: Typically 60-80% on repeated vocabularies
+- **Content Integrity**: Complete stage1 + stage2 results preserved
 
 ## 🎮 CLI Overview
 
